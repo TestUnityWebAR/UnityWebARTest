@@ -7,6 +7,10 @@
     <meta name="description" content="">
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
+
+     <!-- Load A-Frame + AR.js in the head for earlier availability -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.rawgit.com/jeromeetienne/ar.js/2.0.1/aframe/build/aframe-ar.min.js"></script>
   </head>
   <body>
     <div id="unity-container">
@@ -27,6 +31,14 @@
         <div id="unity-build-title">DePantherWebXRTest</div>
       </div>
     </div>
+    <!-- AR.js scene with image marker -->
+    <a-scene embedded arjs>
+      <a-marker id="image-marker" type="pattern" url="marker.patt">
+        <!-- Optional 3D element -->
+        <a-box position="0 0.5 0" material="color: red;"></a-box>
+      </a-marker>
+    <a-entity camera></a-entity>
+    </a-scene>
     <script>
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/UnityWebARTest.loader.js";
@@ -59,8 +71,26 @@
         createUnityInstance(canvas, config, (progress) => {
           progressBarFull.style.width = 100 * progress + "%";
         }).then((instance) => {
+          // Notify Unity when marker is found or lost
           unityInstance = instance;
+          unityReady = true;
           loadingBar.style.display = "none";
+          const marker = document.querySelector("#image-marker");
+          let markerAlreadyDetected = false;
+
+          marker.addEventListener("markerFound", () => {
+            if (unityReady && !markerAlreadyDetected) {
+              markerAlreadyDetected = true;
+              unityInstance.SendMessage("CubeManager", "OnImageDetected", "Test");
+            }
+          });
+
+          marker.addEventListener("markerLost", () => {
+            if (unityReady && markerAlreadyDetected) {
+              markerAlreadyDetected = false;
+              unityInstance.SendMessage("CubeManager", "OnImageLost", "Test");
+            }
+          });
           if (fullscreenButton)
           {
             fullscreenButton.onclick = () => {
