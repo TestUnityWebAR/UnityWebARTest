@@ -7,11 +7,23 @@
     <meta name="description" content="">
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: transparent;
+      }
+      canvas#unity-canvas {
+        background-color: transparent !important;
+      }
+    </style>
   </head>
   <body>
     <div id="unity-container">
       <div id="unity-canvas-container">
-        <canvas id="unity-canvas" style="width: 100%; height: 100%;"></canvas>
+        <!-- Transparent canvas -->
+        <canvas id="unity-canvas" style="width: 100%; height: 100%; background-color: transparent;"></canvas>
       </div>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
@@ -28,6 +40,14 @@
       </div>
     </div>
 
+    <!--AR.js Scene-->
+    <a-scene embedded arjs>
+      <a-marker type="pattern" url="markers/pattern-Test.patt" id="image-marker">
+        <a-box position="0 0.5 0" material="color: red;"></a-box>
+      </a-marker>
+      <a-entity camera></a-entity>
+    </a-scene>
+
     <script>
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/BuildOutput.loader.js";
@@ -39,6 +59,11 @@
         companyName: "DefaultCompany",
         productName: "DePantherWebXRTest",
         productVersion: "0.1.0",
+        // Enable alpha in context config
+        webglContextAttributes: {
+          alpha: true,
+          preserveDrawingBuffer: true
+        }
       };
 
       var container = document.querySelector("#unity-container");
@@ -66,6 +91,15 @@
               unityInstance.SetFullscreen(1);
             };
           }
+
+        //Notify Unity when the marker is detected
+        const marker = document.querySelector("#image-marker");
+        marker.addEventListener("markerFound", () => {
+          if (unityInstance) {
+            unityInstance.SendMessage("CubeManager", "OnImageDetected", "Test");
+          }
+        });
+
         }).catch((message) => {
           alert(message);
         });
@@ -82,21 +116,18 @@
         enterVRButton.disabled = !event.detail.supported;
       }, false);
 
-      // FIX: Request camera permission before starting AR
       enterARButton.addEventListener('click', function (event) {
         navigator.mediaDevices.getUserMedia({ video: true })
           .then(stream => {
-            // Permission granted, start AR
-            unityInstance.Module.WebXR.toggleAR();
           })
           .catch(err => {
             alert('Camera permission is required for AR. Error: ' + err.message);
-          });
+           });
       }, false);
 
-      enterVRButton.addEventListener('click', function (event) {
-        unityInstance.Module.WebXR.toggleVR();
-      }, false);
-    </script>
+    enterVRButton.addEventListener('click', function (event) {
+    unityInstance.Module.WebXR.toggleVR();
+    }, false);
+   </script>
   </body>
 </html>
