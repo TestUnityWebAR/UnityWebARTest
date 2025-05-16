@@ -15,18 +15,19 @@
     padding: 0;
     overflow: hidden;
     background-color: white;
+    height: 100%;
   }
 
   #unity-container {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100vh;
   }
 
   #unity-canvas-container {
-    display: inline-block;
-    margin-top: 60px;
+    margin-top: 100px; /* push down from top */
   }
 
   canvas#unity-canvas {
@@ -38,11 +39,8 @@
   #unity-footer {
     margin-top: 10px;
   }
-
-  a-scene {
-    display: none; /* Hide AR.js layer for now if not using */
-  }
 </style>
+
 
 </head>
 <body>
