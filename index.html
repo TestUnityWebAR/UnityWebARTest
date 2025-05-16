@@ -9,50 +9,41 @@
   <link rel="stylesheet" href="TemplateData/style.css" />
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background-color: transparent;
-      width: 100vw;
-      height: 100vh;
-    }
-    canvas#unity-canvas {
-      background-color: transparent !important;
-      width: 100vw !important;
-      height: 100vh !important;
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 1;
-    }
-    a-scene {
-      position: absolute !important;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 0;
-    }
-    #unity-container,
-    #unity-canvas-container {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 1;
-      pointer-events: none;
-    }
-    #unity-footer{
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      z-index: 10;
-      pointer-events: auto;
-    }
-  </style>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: white;
+  }
+
+  #unity-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    text-align: center;
+  }
+
+  #unity-canvas-container {
+    display: inline-block;
+    margin-top: 60px;
+  }
+
+  canvas#unity-canvas {
+    width: 960px;
+    height: 600px;
+    background-color: #231F20;
+  }
+
+  #unity-footer {
+    margin-top: 10px;
+  }
+
+  a-scene {
+    display: none; /* Hide AR.js layer for now if not using */
+  }
+</style>
+
 </head>
 <body>
   <div id="unity-container">
