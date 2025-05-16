@@ -9,39 +9,17 @@
   <link rel="stylesheet" href="TemplateData/style.css" />
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
-<style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background-color: white;
-    height: 100%;
-  }
-
-  #unity-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    height: 100vh;
-  }
-
-  #unity-canvas-container {
-    margin-top: 100px; /* push down from top */
-  }
-
-  canvas#unity-canvas {
-    width: 960px;
-    height: 600px;
-    background-color: #231F20;
-  }
-
-  #unity-footer {
-    margin-top: 10px;
-  }
-</style>
-
-
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: transparent;
+    }
+    canvas#unity-canvas {
+      background-color: transparent !important;
+    }
+  </style>
 </head>
 <body>
   <div id="unity-container">
