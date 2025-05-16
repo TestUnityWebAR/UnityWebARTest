@@ -27,6 +27,7 @@
         <div id="unity-build-title">DePantherWebXRTest</div>
       </div>
     </div>
+
     <script>
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/BuildOutput.loader.js";
@@ -47,7 +48,6 @@
       var progressBarFull = document.querySelector("#unity-progress-bar-full");
       var fullscreenButton = document.querySelector("#unity-fullscreen-button");
       var unityInstance = null;
-      
 
       canvasContainer.style.width = "960px";
       canvasContainer.style.height = "600px";
@@ -61,8 +61,7 @@
         }).then((instance) => {
           unityInstance = instance;
           loadingBar.style.display = "none";
-          if (fullscreenButton)
-          {
+          if (fullscreenButton) {
             fullscreenButton.onclick = () => {
               unityInstance.SetFullscreen(1);
             };
@@ -83,9 +82,18 @@
         enterVRButton.disabled = !event.detail.supported;
       }, false);
 
+      // FIX: Request camera permission before starting AR
       enterARButton.addEventListener('click', function (event) {
-        unityInstance.Module.WebXR.toggleAR();
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(stream => {
+            // Permission granted, start AR
+            unityInstance.Module.WebXR.toggleAR();
+          })
+          .catch(err => {
+            alert('Camera permission is required for AR. Error: ' + err.message);
+          });
       }, false);
+
       enterVRButton.addEventListener('click', function (event) {
         unityInstance.Module.WebXR.toggleVR();
       }, false);
