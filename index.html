@@ -10,17 +10,34 @@
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
   <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: transparent;
+      width: 100vw;
+      height: 100vh;
+    }
+    canvas#unity-canvas {
+      background-color: transparent !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
     a-scene {
-      position: fixed !important;
+      position: absolute !important;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
       z-index: 0;
     }
-
-    #unity-container {
-      position: fixed;
+    #unity-container,
+    #unity-canvas-container {
+      position: absolute;
       top: 0;
       left: 0;
       width: 100vw;
@@ -28,15 +45,12 @@
       z-index: 1;
       pointer-events: none;
     }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background-color: transparent;
-    }
-    canvas#unity-canvas {
-      background-color: transparent !important;
+    #unity-footer{
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 10;
+      pointer-events: auto;
     }
   </style>
 </head>
