@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity WebGL Player | {{{ PRODUCT_NAME }}}</title>
-    <meta name="description" content="{{{ DESCRIPTION }}}">
+    <title>Unity WebGL Player | TestAR</title>
+    <meta name="description" content="Just Testing if it works">
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
@@ -79,8 +79,8 @@
       var fullscreenButton = document.querySelector("#unity-fullscreen-button");
       var unityInstance = null;
 
-      canvasContainer.style.width = "{{{ WIDTH }}}px";
-      canvasContainer.style.height = "{{{ HEIGHT }}}px"
+      canvasContainer.style.width = "100px";
+      canvasContainer.style.height = "100px"
       loadingBar.style.display = "block";
 
       var script = document.createElement("script");
@@ -103,22 +103,22 @@
       };
       document.body.appendChild(script);
 
-      let enterARButton = document.getElementById('enterar');
-      let enterVRButton = document.getElementById('entervr');
+      // let enterARButton = document.getElementById('enterar');
+      // let enterVRButton = document.getElementById('entervr');
 
-      document.addEventListener('onARSupportedCheck', function (event) {
-        enterARButton.disabled = !event.detail.supported;
-      }, false);
-      document.addEventListener('onVRSupportedCheck', function (event) {
-        enterVRButton.disabled = !event.detail.supported;
-      }, false);
+      // document.addEventListener('onARSupportedCheck', function (event) {
+      //   enterARButton.disabled = !event.detail.supported;
+      // }, false);
+      // document.addEventListener('onVRSupportedCheck', function (event) {
+      //   enterVRButton.disabled = !event.detail.supported;
+      // }, false);
 
-      enterARButton.addEventListener('click', function (event) {
-        unityInstance.Module.WebXR.toggleAR();
-      }, false);
-      enterVRButton.addEventListener('click', function (event) {
-        unityInstance.Module.WebXR.toggleVR();
-      }, false);
+      // enterARButton.addEventListener('click', function (event) {
+      //   unityInstance.Module.WebXR.toggleAR();
+      // }, false);
+      // enterVRButton.addEventListener('click', function (event) {
+      //   unityInstance.Module.WebXR.toggleVR();
+      // }, false);
 
       const marker = document.querySelector('#my-marker');
 
