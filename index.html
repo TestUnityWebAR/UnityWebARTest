@@ -55,21 +55,15 @@
   </a-scene>
     <script>
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+      var loaderUrl = buildUrl + "/UnityWebARTest.loader.js";
       var config = {
-        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
-        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
-        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
-#if MEMORY_FILENAME
-        memoryUrl: buildUrl + "/{{{ MEMORY_FILENAME }}}",
-#endif
-#if SYMBOLS_FILENAME
-        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
-#endif
+        dataUrl: buildUrl + "/UnityWebARTest.data",
+        frameworkUrl: buildUrl + "/UnityWebARTest.framework.js",
+        codeUrl: buildUrl + "/UnityWebARTest.wasm",
         streamingAssetsUrl: "StreamingAssets",
-        companyName: "{{{ COMPANY_NAME }}}",
-        productName: "{{{ PRODUCT_NAME }}}",
-        productVersion: "{{{ PRODUCT_VERSION }}}",
+        companyName: "DefaultCompany",
+        productName: "UnityWebARTest",
+        productVersion: "0.1.0",
 
         webglContextAttributes: {
           alpha: true,
@@ -87,10 +81,7 @@
       {{{ WEBXR_POLYFILL_CONFIG }}}
 
       canvasContainer.style.width = "{{{ WIDTH }}}px";
-      canvasContainer.style.height = "{{{ HEIGHT }}}px";
-#if BACKGROUND_FILENAME
-      canvas.style.background = "url('" + buildUrl + "/{{{ BACKGROUND_FILENAME.replace(/'/g, '%27') }}}') center / cover";
-#endif
+      canvasContainer.style.height = "{{{ HEIGHT }}}px"
       loadingBar.style.display = "block";
 
       var script = document.createElement("script");
