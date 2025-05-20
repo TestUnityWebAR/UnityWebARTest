@@ -111,11 +111,18 @@
           const sendPose = () => {
             if (!marker.object3D.visible) return;
             const {position:p, quaternion:q} = marker.object3D;
+            // scale cm → m and invert Z
+            const ux =  p.x / 100;
+            const uy =  p.y / 100;
+            const uz = -p.z / 100;
+
+            // adjust quaternion handedness
+            const rx = -q.x, ry = -q.y, rz = q.z, rw = q.w;
 
             // build the JSON exactly matching your C# MarkerData
             const payload = JSON.stringify({
-              position: { x:  p.x, y:  p.y, z: -p.z },    // inverted Z
-              rotation: { x: -q.x, y: -q.y, z:  q.z, w: q.w }
+              position: { x: ux, y: uy, z: uz },
+              rotation: { x: rx, y: ry, z: rz, w: rw }
             });
 
             // 🔍 Log it so you can paste into Unity console
@@ -137,7 +144,7 @@
           marker.addEventListener("markerLost",  ()=> sendState(0));
           marker.addEventListener("componentchanged", sendPose);
 
-        }).catch(err=>console.error("Unity load error:",err));
+        }).catch(console.error);
       };
       document.body.appendChild(loader);
     </script>
