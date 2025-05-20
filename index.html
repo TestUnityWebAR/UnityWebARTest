@@ -4,33 +4,29 @@
     <meta charset="utf-8">
     <title>Unity WebARProject</title>
 
-    <!-- 1) A-Frame + AR.js (NFT build) -->
+    <!-- 1) A-Frame + AR.js for NFT tracking -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      html, body {
-        margin: 0; padding: 0; overflow: hidden;
-        background: transparent !important;
-      }
-      /* AR.js scene behind Unity */
+      html, body { margin:0; padding:0; overflow:hidden; background:transparent; }
+      /* AR.js scene full-screen behind Unity */
       #scene {
-        position: absolute; top: 0; left: 0;
-        width: 100vw; height: 100vh;
+        position:absolute; top:0; left:0;
+        width:100vw; height:100vh;
       }
-      /* Unity canvas on top, but transparent */
+      /* Unity canvas sits on top—but remains transparent */
       #unity-container, #unity-canvas {
-        position: absolute; top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        background: transparent !important;
-        pointer-events: none;
+        position:absolute; top:0; left:0;
+        width:100vw; height:100vh;
+        background:transparent !important;
+        pointer-events:none;
       }
-      canvas { background: transparent !important; }
+      canvas { background:transparent !important; }
     </style>
   </head>
-
   <body>
-    <!-- 2) AR.js Scene for NFT tracking -->
+    <!-- === AR.js Scene === -->
     <a-scene
       id="scene"
       embedded
@@ -50,7 +46,7 @@
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- 3) Unity WebGL canvas & loading UI -->
+    <!-- === Unity Canvas & Loading UI === -->
     <div id="unity-container">
       <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -66,20 +62,23 @@
       </div>
     </div>
 
-    <!-- 4) Unity loader + AR.js ↔ Unity bridge -->
+    <!-- === Unity Loader + AR.js ↔ Unity Bridge === -->
     <script>
-      // Banner for Unity warnings/errors
+      // 1) A small banner for Unity warnings/errors
       function unityShowBanner(msg, type) {
         const b = document.querySelector("#unity-warning");
         const div = document.createElement("div");
         div.innerHTML = msg;
-        if (type === "error") div.style = "background:red;padding:10px;";
-        else if (type === "warning") div.style = "background:yellow;padding:10px;";
+        div.style = type === "error"
+          ? "background:red;padding:10px;"
+          : type === "warning"
+            ? "background:yellow;padding:10px;"
+            : "";
         b.appendChild(div);
-        setTimeout(() => { b.removeChild(div); }, type === "warning" ? 5000 : 0);
+        if (type === "warning") setTimeout(()=>b.removeChild(div),5000);
       }
 
-      // References
+      // 2) Prepare references & config
       const canvas    = document.getElementById("unity-canvas");
       const marker    = document.getElementById("marker");
       const loaderUrl = "Build/UnityWebARTest.loader.js";
@@ -87,49 +86,48 @@
         dataUrl:    "Build/UnityWebARTest.data",
         frameworkUrl:"Build/UnityWebARTest.framework.js",
         codeUrl:    "Build/UnityWebARTest.wasm",
-        streamingAssetsUrl: "StreamingAssets",
-        showBanner: unityShowBanner,
+        streamingAssetsUrl:"StreamingAssets",
+        showBanner:   unityShowBanner,
         webglContextAttributes: {
-          alpha: true,
-          premultipliedAlpha: false
+          alpha:             true,
+          premultipliedAlpha:false
         }
       };
 
-      // Inject Unity loader script
+      // 3) Inject Unity’s loader script (only once!)
       const loader = document.createElement("script");
       loader.src = loaderUrl;
       loader.onload = () => {
-        // Boot Unity once
+        // 4) Boot Unity
         createUnityInstance(canvas, config, (progress) => {
           document.querySelector("#unity-progress-bar-full")
-                  .style.width = (100 * progress) + "%";
+                  .style.width = (100*progress) + "%";
         }).then(unityInstance => {
           window.unityInstance = unityInstance;
           document.querySelector("#unity-loading-bar").style.display = "none";
 
-          // Show/hide CubeSpawner
-          function sendState(v) {
-            unityInstance.SendMessage("CubeSpawner", "SetTracking", v);
-          }
-
-          // Update ARObject with marker pose
-          function sendPose() {
+          // Helpers for messaging
+          const sendState = v =>
+            unityInstance.SendMessage("CubeSpawner","SetTracking",v);
+          const sendPose  = () => {
             if (!marker.object3D.visible) return;
-            const { position: p, quaternion: q } = marker.object3D;
-            const payload = [p.x, p.y, p.z, q.x, q.y, q.z].join(",");
-            unityInstance.SendMessage("ARObject", "UpdateFromJS", payload);
-          }
+            const {position:p, quaternion:q} = marker.object3D;
+            unityInstance.SendMessage(
+              "ARObject","UpdateFromJS",
+              [p.x,p.y,p.z,q.x,q.y,q.z].join(",")
+            );
+          };
 
-          // Hook AR.js events
-          marker.addEventListener("markerFound", () => {
+          // 5) Wire AR.js events → Unity
+          marker.addEventListener("markerFound",()=>{
             sendState(1);
             sendPose();
-            unityInstance.SendMessage("CubeSpawner", "SpawnCube");
+            unityInstance.SendMessage("CubeSpawner","SpawnCube");
           });
-          marker.addEventListener("markerLost",  () => sendState(0));
+          marker.addEventListener("markerLost", () => sendState(0));
           marker.addEventListener("componentchanged", sendPose);
 
-        }).catch(err => console.error("Unity load error:", err));
+        }).catch(err=>console.error("Unity load error:",err));
       };
       document.body.appendChild(loader);
     </script>
