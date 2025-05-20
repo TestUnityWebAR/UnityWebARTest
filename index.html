@@ -213,11 +213,11 @@
         // Send only 6 values: px, py, pz, rx, ry, rz
         const payload = [ p.x, p.y, p.z, q.x, q.y, q.z ].join(",");
 
-        unityInstance.SendMessage(
-          "ARObject",        // must exactly match the name of your GameObject in the Hierarchy
-          "UpdateFromJS",    // the method name in ARSync.cs
-          payload            // a single string argument
-        );
+        // unityInstance.SendMessage(
+        //   "ARObject",        // must exactly match the name of your GameObject in the Hierarchy
+        //   "UpdateFromJS",    // the method name in ARSync.cs
+        //   payload            // a single string argument
+        // );
       }
 
 
@@ -231,6 +231,7 @@
       marker.addEventListener("markerFound", () => {
         sendState(1);
         sendPose();
+        unityInstance.SendMessage("CubeSpawner", "SpawnCube");
       });
       marker.addEventListener("markerLost", () => sendState(0));
       marker.addEventListener("componentchanged", sendPose);
