@@ -207,17 +207,19 @@
       // 3) Helpers to send pose & tracking state
       function sendPose() {
         if (!unityInstance || !marker.object3D.visible) return;
+
         const { position: p, quaternion: q } = marker.object3D;
+
+        // Send only 6 values: px, py, pz, rx, ry, rz
+        const payload = [ p.x, p.y, p.z, q.x, q.y, q.z ].join(",");
+
         unityInstance.SendMessage(
-          "CubeSpawner",
-          "ARObject",
-          "UpdateTransformData",
-          JSON.stringify({
-            position: { x: p.x, y: p.y, z: p.z },
-            rotation: { x: q.x, y: q.y, z: q.z, w: q.w }
-          })
+          "ARObject",        // must exactly match the name of your GameObject in the Hierarchy
+          "UpdateFromJS",    // the method name in ARSync.cs
+          payload            // a single string argument
         );
       }
+
 
       function sendState(v) {
         if (unityInstance) {
