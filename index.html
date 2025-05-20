@@ -26,15 +26,26 @@
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
     <a-scene
-      embedded
-      vr-mode-ui="enabled: false"
-      renderer="alpha:true"
-      arjs="sourceType:webcam;…"
-    >
-      <a-nft id="marker" …>
-        <a-entity camera></a-entity>
-      </a-nft>
-    </a-scene>
+    embedded
+    vr-mode-ui="enabled: false"
+    renderer="alpha: true; antialias: true;"
+    arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
+  >
+    <!-- your NFT marker needs at least a type and a url -->
+    <a-nft 
+      type="nft" 
+      url="StreamingAssets/your-marker-folder" 
+      smooth="true" 
+      smoothCount="10"
+      smoothTolerance="0.01"
+      smoothThreshold="5">
+      <!-- anything you want to stick on the marker -->
+      <a-box position="0 0.5 0" material="color: red;"></a-box>
+    </a-nft>
+
+    <!-- camera must live at root of scene (not inside the <a-nft>) -->
+    <a-entity camera></a-entity>
+  </a-scene>
     <!-- Unity Canvas & Loading UI -->
     <div id="unity-container">
       <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
