@@ -2,13 +2,29 @@
 <html lang="en-us">
   <head>
     <meta charset="utf-8">
-    <title>Unity WebARProject</title>
+    <title>Unity WebGL Smoke Test</title>
+    <style>
+      html, body { margin:0; padding:0; overflow:hidden; }
+      #unity-container, #unity-canvas {
+        position:absolute; top:0; left:0;
+        width:100vw; height:100vh;
+        background:transparent;
+      }
+      #spawn-button {
+        position: absolute;
+        top: 10px; left: 10px;
+        z-index: 100;
+        pointer-events: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Spawn button to manually test if SendMessage works -->
+    <button id="spawn-button" onclick="unityInstance.SendMessage('CubeSpawner','SpawnCube')">
+      Spawn Cube
+    </button>
 
-    <button style="position:absolute;top:10px;left:10px;z-index:100;pointer-events:auto;"
-       onclick="unityInstance.SendMessage('CubeSpawner','SpawnCube')">
-     Spawn Cube
-   </button>
-    <!-- === Unity Canvas & Loading UI === -->
+    <!-- Unity Canvas & Loading UI -->
     <div id="unity-container">
       <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -20,91 +36,55 @@
       <div id="unity-warning"></div>
       <div id="unity-footer">
         <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">UnityWebARProject</div>
+        <div id="unity-build-title">Unity Smoke Test</div>
       </div>
     </div>
 
-    <!-- === Unity Loader + AR.js → CubeSpawner Bridge === -->
+    <!-- Unity Loader & immediate spawn -->
     <script>
-      // small banner for Unity warnings/errors
-      function unityShowBanner(msg, type) {
-        const b = document.querySelector("#unity-warning");
-        const div = document.createElement("div");
-        div.innerHTML = msg;
-        if (type === "error") div.style = "background:red;padding:10px;";
-        if (type === "warning") {
-          div.style = "background:yellow;padding:10px;";
-          setTimeout(()=>b.removeChild(div),5000);
-        }
-        b.appendChild(div);
+      function unityShowBanner(msg,type){
+        const b=document.querySelector("#unity-warning"),
+              d=document.createElement("div");
+        d.innerHTML=msg;
+        d.style= type==="error"
+          ? "background:red;padding:10px;"
+          : (type==="warning"
+             ? "background:yellow;padding:10px;"
+             : "");
+        b.appendChild(d);
+        if(type==="warning") setTimeout(()=>b.removeChild(d),5000);
       }
 
-      // refs & config
-      const canvas    = document.getElementById("unity-canvas");
-      const marker    = document.getElementById("marker");
+      const canvas = document.getElementById("unity-canvas");
       const loaderUrl = "Build/UnityWebARTest.loader.js";
-      const config    = {
+      const config = {
         dataUrl:    "Build/UnityWebARTest.data",
         frameworkUrl:"Build/UnityWebARTest.framework.js",
         codeUrl:    "Build/UnityWebARTest.wasm",
         streamingAssetsUrl:"StreamingAssets",
-        showBanner:   unityShowBanner,
-        webglContextAttributes: {
-          alpha:             true,
-          premultipliedAlpha:false
-        }
+        showBanner: unityShowBanner,
+        webglContextAttributes: { alpha:true, premultipliedAlpha:false }
       };
 
-      // inject Unity loader
+      // Inject Unity loader
       const loader = document.createElement("script");
       loader.src = loaderUrl;
       loader.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
           document.querySelector("#unity-progress-bar-full")
-                  .style.width = (100*progress) + "%";
+                  .style.width = (100 * progress) + "%";
         }).then(unityInstance => {
+          // Store globally
           window.unityInstance = unityInstance;
+          // Hide loading UI
           document.querySelector("#unity-loading-bar").style.display = "none";
-
-          // helpers for CubeSpawner
-          const sendState = v =>
-            unityInstance.SendMessage("CubeSpawner","SetTracking",v);
-
-          const sendPose = () => {
-              if (!unityInstance || !marker.object3D.visible) return;
-              const { position: p, quaternion: q } = marker.object3D;
-
-              // cm→m scale, but **no** invert on Z this time:
-              const ux = p.x / 100;
-              const uy = p.y / 100;
-              const uz = p.z / 100;         // <-- positive p.z becomes negative in world
-
-              // Handedness for rotation (keep as you had):
-              const rx = -q.x;
-              const ry = -q.y;
-              const rz =  q.z;
-              const rw =  q.w;
-
-              const payload = JSON.stringify({
-                position: { x: ux, y: uy, z: uz },
-                rotation: { x: rx, y: ry, z: rz, w: rw }
-              });
-
-              console.log("JS → Unity JSON:", payload);
-              unityInstance.SendMessage("CubeSpawner", "UpdateTransformData", payload);
-            };
-
-            marker.addEventListener("markerFound", () => {
-              unityInstance.SendMessage("CubeSpawner", "SetTracking", 1);
-              sendPose();
-              unityInstance.SendMessage("CubeSpawner", "SpawnCube");
-            });
-            marker.addEventListener("markerLost",  () => unityInstance.SendMessage("CubeSpawner", "SetTracking", 0));
-            marker.addEventListener("componentchanged", sendPose);
-
-          }).catch(console.error);
-        };
-        document.body.appendChild(loader);
+          // **Smoke test**: spawn a cube immediately
+          unityInstance.SendMessage("CubeSpawner","SpawnCube");
+        }).catch(err=>{
+          console.error("Unity load error:",err);
+        });
+      };
+      document.body.appendChild(loader);
     </script>
   </body>
 </html>
