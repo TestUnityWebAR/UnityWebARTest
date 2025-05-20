@@ -81,6 +81,8 @@
 
       // References
       const canvas    = document.getElementById("unity-canvas");
+      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      console.log( gl.getContextAttributes() );
       const marker    = document.getElementById("marker");
       const loaderUrl = "Build/UnityWebARTest.loader.js";
       const config    = {
