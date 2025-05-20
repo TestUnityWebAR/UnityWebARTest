@@ -114,13 +114,8 @@
             unityInstance.SendMessage(
               "CubeSpawner","UpdateTransformData",
               JSON.stringify({
-                x:  p.x,
-                y:  p.y,
-                z:  p.z,
-                qx: q.x,
-                qy: q.y,
-                qz: q.z,
-                qw: q.w
+                position: { x: p.x, y: p.y, z: p.z },
+                rotation: { x: q.x, y: q.y, z: q.z, w: q.w }
               })
             );
           };
