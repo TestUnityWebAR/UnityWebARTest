@@ -18,12 +18,17 @@
         overflow: hidden;
         background: transparent !important;
       }
+      /* Make the AR.js scene full-screen behind Unity */
+      #scene {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+      }
+      /* Unity canvas sits on top, but is transparent */
       #unity-container, #unity-canvas {
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
         background: transparent !important;
         pointer-events: none; /* let A-Frame receive touches */
       }
@@ -31,40 +36,41 @@
         background-color: transparent !important;
       }
     </style>
-
   </head>
+
   <body>
-    <!-- AR.js Scene -->
+    <!-- === AR.js Scene === -->
     <a-scene
+      id="scene"
       vr-mode-ui="enabled: false"
       embedded
-      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
       renderer="logarithmicDepthBuffer: true; alpha: true"
-      id="scene"
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
     >
       <a-nft
+        id="marker"
         type="nft"
         url="UnityWebARTest/Descriptors/test2"
         smooth="true"
         smoothCount="10"
         smoothTolerance="0.01"
         smoothThreshold="5"
-        id="marker"
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
       <a-entity camera></a-entity>
     </a-scene>
-    <!-- Unity Canvas -->
+
+    <!-- === Unity Canvas & UI === -->
     <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width="960" height="600" tabindex="-1" style="background-color: transparent;"></canvas>
+      <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
           <div id="unity-progress-bar-full"></div>
         </div>
       </div>
-      <div id="unity-warning"> </div>
+      <div id="unity-warning"></div>
       <div id="unity-footer">
         <div id="unity-logo-title-footer"></div>
         <div id="unity-fullscreen-button"></div>
@@ -72,211 +78,88 @@
       </div>
     </div>
 
-    <!-- Unity Loader Script -->
+    <!-- === Unity Loader + AR.js ↔ Unity Bridge === -->
     <script>
-      var canvas = document.querySelector("#unity-canvas");
-
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
+      // 1) Banner for warnings/errors from Unity
       function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        const warningBanner = document.querySelector("#unity-warning");
+        function updateVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? "block" : "none";
         }
-        var div = document.createElement('div');
+        const div = document.createElement("div");
         div.innerHTML = msg;
         warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
+        if (type === "error") div.style = "background:red;padding:10px;";
+        else if (type === "warning") {
+          div.style = "background:yellow;padding:10px;";
+          setTimeout(() => {
             warningBanner.removeChild(div);
-            updateBannerVisibility();
+            updateVisibility();
           }, 5000);
         }
-        updateBannerVisibility();
+        updateVisibility();
       }
 
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/UnityWebARTest.loader.js";
-      var config = {
-        arguments: [],
-        dataUrl: buildUrl + "/UnityWebARTest.data",
-        frameworkUrl: buildUrl + "/UnityWebARTest.framework.js",
-        codeUrl: buildUrl + "/UnityWebARTest.wasm",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "DefaultCompany",
-        productName: "UnityWebARProject",
-        productVersion: "0.1.0",
-        showBanner: unityShowBanner,
+      // 2) Config for Unity WebGL
+      const canvas    = document.getElementById("unity-canvas");
+      const marker    = document.getElementById("marker");
+      const loaderUrl = "Build/UnityWebARTest.loader.js";
+      const config    = {
+        dataUrl:             "Build/UnityWebARTest.data",
+        frameworkUrl:        "Build/UnityWebARTest.framework.js",
+        codeUrl:             "Build/UnityWebARTest.wasm",
+        streamingAssetsUrl:  "StreamingAssets",
+        companyName:         "DefaultCompany",
+        productName:         "UnityWebARProject",
+        productVersion:      "0.1.0",
+        showBanner:          unityShowBanner,
         webglContextAttributes: {
-          alpha: true,
+          alpha:            true,
           premultipliedAlpha: false
         }
       };
 
+      // 3) Inject and load the Unity loader
       const loader = document.createElement("script");
       loader.src = loaderUrl;
       loader.onload = () => {
-        // 2) only once that’s in, boot Unity
         createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-        }).then((unityInstance) => {
-
-          // 3) now you have a real instance
+          document.querySelector("#unity-progress-bar-full")
+                  .style.width = (100 * progress) + "%";
+        }).then(unityInstance => {
+          // Store the instance globally
           window.unityInstance = unityInstance;
+          // Hide the loading bar
           document.querySelector("#unity-loading-bar").style.display = "none";
 
-          // grab your marker
-          const marker = document.getElementById("marker");
+          // Helper: toggle the CubeSpawner GameObject on/off
+          function sendState(v) {
+            unityInstance.SendMessage("CubeSpawner", "SetTracking", v);
+          }
 
-          // helper to update pose on your ARObject
+          // Helper: update your ARObject’s transform
           function sendPose() {
             if (!marker.object3D.visible) return;
             const { position: p, quaternion: q } = marker.object3D;
             const payload = [p.x, p.y, p.z, q.x, q.y, q.z].join(",");
-            unityInstance.SendMessage("ARObject","UpdateFromJS",payload);
+            unityInstance.SendMessage("ARObject", "UpdateFromJS", payload);
           }
 
-          // helper to turn the spawner on/off
-          function sendState(v) {
-            unityInstance.SendMessage("CubeSpawner","SetTracking",v);
-          }
-
-          // 4) hook all your AR.js events
+          // Hook AR.js events
           marker.addEventListener("markerFound", () => {
-            sendState(1);
-            sendPose();
-            //spawn the cube!
-            unityInstance.SendMessage("CubeSpawner","SpawnCube");
+            sendState(1);                 // show the spawner
+            sendPose();                   // sync the pose
+            unityInstance.SendMessage(
+              "CubeSpawner", 
+              "SpawnCube"                // instantiate your cube prefab
+            );
           });
-          marker.addEventListener("markerLost", () => sendState(0));
+          marker.addEventListener("markerLost",  () => sendState(0));
           marker.addEventListener("componentchanged", sendPose);
 
-        }).catch(err => console.error(err));
+        }).catch(err => console.error("Unity load error:", err));
       };
       document.body.appendChild(loader);
-
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-
-      // If you would like all file writes inside Unity Application.persistentDataPath
-      // directory to automatically persist so that the contents are remembered when
-      // the user revisits the site the next time, uncomment the following line:
-      // config.autoSyncPersistentDataPath = true;
-      // This autosyncing is currently not the default behavior to avoid regressing
-      // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
-      // expected to change.
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
-
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
-
-      } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
-      }
-
-      document.querySelector("#unity-loading-bar").style.display = "block";
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                document.querySelector("#unity-loading-bar").style.display = "none";
-                document.querySelector("#unity-fullscreen-button").onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                // Wait for a tap anywhere on the screen
-                //Inject Unity sync when it's ready
-                window.unityInstance = unityInstance;
-                document.body.addEventListener('click', () => {
-                  if (unityInstance) {
-                    unityInstance.SendMessage('CubeSpawner', 'SpawnCube');
-                  }
-                });
-              };
-              }).catch((message) => {
-                alert(message);
-              });
-            };
-
-
-      document.body.appendChild(script);
-
     </script>
-    <!-- JS Bridge from AR.js to Unity -->
-    <!-- <script>
-      // 1) Make unityInstance available globally
-      let unityInstance;
-
-      createUnityInstance(canvas, config, (progress) => {
-        document.querySelector("#unity-progress-bar-full")
-                .style.width = 100 * progress + "%";
-      }).then((instance) => {
-        unityInstance = instance;                    // ← assign here
-        document.querySelector("#unity-loading-bar")
-                .style.display = "none";
-        document.querySelector("#unity-fullscreen-button")
-                .onclick = () => instance.SetFullscreen(1);
-      }).catch(console.error);
-
-      // 2) Grab the marker once
-      const marker = document.getElementById("marker");
-
-      // 3) Helpers to send pose & tracking state
-      function sendPose() {
-        if (!unityInstance || !marker.object3D.visible) return;
-
-        const { position: p, quaternion: q } = marker.object3D;
-
-        // Send only 6 values: px, py, pz, rx, ry, rz
-        const payload = [ p.x, p.y, p.z, q.x, q.y, q.z ].join(",");
-
-        // unityInstance.SendMessage(
-        //   "ARObject",        // must exactly match the name of your GameObject in the Hierarchy
-        //   "UpdateFromJS",    // the method name in ARSync.cs
-        //   payload            // a single string argument
-        // );
-      }
-
-
-      function sendState(v) {
-        if (unityInstance) {
-          unityInstance.SendMessage("CubeSpawner", "SetTracking", v);
-        }
-      }
-
-      // 4) Wire up AR.js events instead of tick polling
-      marker.addEventListener("markerFound", () => {
-        sendState(1);
-        sendPose();
-        unityInstance.SendMessage("CubeSpawner", "SpawnCube");
-      });
-      marker.addEventListener("markerLost", () => sendState(0));
-      marker.addEventListener("componentchanged", sendPose);
-    </script> -->
   </body>
 </html>
