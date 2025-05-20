@@ -109,44 +109,40 @@
             unityInstance.SendMessage("CubeSpawner","SetTracking",v);
 
           const sendPose = () => {
-            if (!marker.object3D.visible) return;
-            const {position:p, quaternion:q} = marker.object3D;
-            // scale cm → m and invert Z
-            const ux =  p.x / 100;
-            const uy =  p.y / 100;
-            const uz = -p.z / 100;
+              if (!unityInstance || !marker.object3D.visible) return;
+              const { position: p, quaternion: q } = marker.object3D;
 
-            // adjust quaternion handedness
-            const rx = -q.x, ry = -q.y, rz = q.z, rw = q.w;
+              // cm→m scale, but **no** invert on Z this time:
+              const ux = p.x / 100;
+              const uy = p.y / 100;
+              const uz = p.z / 100;         // <-- positive p.z becomes negative in world
 
-            // build the JSON exactly matching your C# MarkerData
-            const payload = JSON.stringify({
-              position: { x: ux, y: uy, z: uz },
-              rotation: { x: rx, y: ry, z: rz, w: rw }
+              // Handedness for rotation (keep as you had):
+              const rx = -q.x;
+              const ry = -q.y;
+              const rz =  q.z;
+              const rw =  q.w;
+
+              const payload = JSON.stringify({
+                position: { x: ux, y: uy, z: uz },
+                rotation: { x: rx, y: ry, z: rz, w: rw }
+              });
+
+              console.log("JS → Unity JSON:", payload);
+              unityInstance.SendMessage("CubeSpawner", "UpdateTransformData", payload);
+            };
+
+            marker.addEventListener("markerFound", () => {
+              unityInstance.SendMessage("CubeSpawner", "SetTracking", 1);
+              sendPose();
+              unityInstance.SendMessage("CubeSpawner", "SpawnCube");
             });
+            marker.addEventListener("markerLost",  () => unityInstance.SendMessage("CubeSpawner", "SetTracking", 0));
+            marker.addEventListener("componentchanged", sendPose);
 
-            // 🔍 Log it so you can paste into Unity console
-            console.log("JS → Unity JSON:", payload);
-
-            unityInstance.SendMessage(
-              "CubeSpawner",
-              "UpdateTransformData",
-              payload
-            );
-          };
-
-          // wire AR.js events → CubeSpawner
-          marker.addEventListener("markerFound", ()=>{
-            sendState(1);
-            sendPose();
-            unityInstance.SendMessage("CubeSpawner","SpawnCube");
-          });
-          marker.addEventListener("markerLost",  ()=> sendState(0));
-          marker.addEventListener("componentchanged", sendPose);
-
-        }).catch(console.error);
-      };
-      document.body.appendChild(loader);
+          }).catch(console.error);
+        };
+        document.body.appendChild(loader);
     </script>
   </body>
 </html>
