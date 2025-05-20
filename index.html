@@ -32,7 +32,7 @@
       embedded
       vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true; alpha: true"
-      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
     >
       <a-nft
         id="marker"
@@ -110,29 +110,21 @@
 
           const sendPose = () => {
             if (!marker.object3D.visible) return;
-
-            // read AR.js pose
             const {position:p, quaternion:q} = marker.object3D;
 
-            // convert to Unity coords:
-            //  - invert Z so forward matches
-            //  - flip X/Y of quaternion for handedness
-            //  - optional scale (e.g. /100) if your units are too large
-            const ux = p.x;
-            const uy = p.y;
-            const uz = -p.z;
+            // build the JSON exactly matching your C# MarkerData
+            const payload = JSON.stringify({
+              position: { x:  p.x, y:  p.y, z: -p.z },    // inverted Z
+              rotation: { x: -q.x, y: -q.y, z:  q.z, w: q.w }
+            });
 
-            const rx = -q.x;
-            const ry = -q.y;
-            const rz =  q.z;
-            const rw =  q.w;
+            // 🔍 Log it so you can paste into Unity console
+            console.log("JS → Unity JSON:", payload);
 
             unityInstance.SendMessage(
-              "CubeSpawner","UpdateTransformData",
-              JSON.stringify({
-                position: { x: ux, y: uy, z: uz },
-                rotation: { x: rx, y: ry, z: rz, w: rw }
-              })
+              "CubeSpawner",
+              "UpdateTransformData",
+              payload
             );
           };
 
