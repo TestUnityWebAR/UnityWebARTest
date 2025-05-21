@@ -4,86 +4,110 @@
     <meta charset="utf-8" />
     <title>Unity WebARProject</title>
 
-    <!-- A-Frame + AR.js -->
+    <!-- 1) A-Frame + AR.js -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      html, body { margin: 0; padding: 0; overflow: hidden; background: #000; }
-      /* scene behind Unity */
-      a-scene { position: absolute; width: 100vw; height: 100vh; }
-      /* Unity canvas on top */
+      html, body {
+        margin:0; padding:0; overflow:hidden; background:transparent;
+      }
+      /* AR.js always on top when debugging */
+      #scene {
+        position:absolute; top:0; left:0;
+        width:100vw; height:100vh;
+        z-index: 2;
+      }
+      /* Unity canvas starts hidden underneath */
       #unity-container,
       #unity-canvas,
       canvas {
-        position: absolute; top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        background: transparent !important;
-        pointer-events: none;
+        position:absolute; top:0; left:0;
+        width:100vw; height:100vh;
+        background:transparent !important;
+        pointer-events:none;
+        z-index: 1;
+        display: none;               /* ← hide until marker found */
       }
     </style>
 
-    <!-- Debug components BEFORE your scene -->
     <script>
-      // Logs markerFound / markerLost events
+      // 2) marker-events—logs and shows Unity on find
       AFRAME.registerComponent('marker-events', {
         init: function () {
           this.el.addEventListener('markerFound', () => {
             console.log(`[marker-events] found: #${this.el.id}`);
+            document.getElementById('unity-container').style.display = 'block';
           });
           this.el.addEventListener('markerLost', () => {
             console.log(`[marker-events] lost:  #${this.el.id}`);
+            document.getElementById('unity-container').style.display = 'none';
           });
         }
       });
 
-      // Logs every tick & when cube would spawn/remove
-      AFRAME.registerComponent('cube-follow', {
+      // 3) your existing cube-follow
+      AFRAME.registerComponent("cube-follow", {
         init: function () {
-          this.spawned = false;
-          console.log(`[cube-follow] init on #${this.el.id}`);
+          this.spawned  = false;
+          this.cameraEl = this.el.sceneEl.querySelector("[camera]");
+          console.log("[cube-follow] init – cameraEl is", this.cameraEl);
         },
         tick: function () {
+          const unity = window.unityInstance;
+          if (!unity?.SendMessage) return;
+
           const vis = this.el.object3D.visible;
-          console.log(`[cube-follow] tick #${this.el.id} → visible: ${vis}`);
+          const markerMat = this.el.object3D.matrixWorld;
+          const camMat    = this.cameraEl.object3D.matrixWorld;
+          const camInv    = new THREE.Matrix4().copy(camMat).invert();
+          const relMat    = new THREE.Matrix4().multiplyMatrices(camInv, markerMat);
+
+          const relPos  = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const relQuat = new THREE.Quaternion().setFromRotationMatrix(relMat);
+
           if (vis && !this.spawned) {
-            console.log(`[cube-follow] → WOULD SPAWN CUBE on #${this.el.id}`);
+            unity.SendMessage("CubeSpawner","SetTracking",1);
+            unity.SendMessage("CubeSpawner","SpawnCube");
             this.spawned = true;
+            console.log("[cube-follow] spawn");
+          }
+          if (vis && this.spawned) {
+            unity.SendMessage(
+              "CubeSpawner","UpdateTransformData",
+              JSON.stringify({
+                position: { x:relPos.x/100, y:relPos.y/100, z:-relPos.z/100 },
+                rotation: { x:-relQuat.x, y:-relQuat.y, z:relQuat.z, w:relQuat.w }
+              })
+            );
           }
           if (!vis && this.spawned) {
-            console.log(`[cube-follow] → WOULD REMOVE CUBE on #${this.el.id}`);
+            unity.SendMessage("CubeSpawner","SetTracking",0);
             this.spawned = false;
+            console.log("[cube-follow] lost");
           }
-        }
+        },
       });
     </script>
   </head>
 
   <body>
-    <!-- AR.js Scene -->
+    <!-- === AR.js NFT Scene === -->
     <a-scene
+      id="scene"
       embedded
       vr-mode-ui="enabled: false"
-      renderer="alpha: true; antialias: true;"
-      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
+      renderer="alpha:true;antialias:true"
+      arjs="trackingMethod:best; sourceType:webcam; debugUIEnabled:true;"
     >
-      <!-- Hiro marker (quick test) -->
-      <a-marker
-        preset="hiro"
-        id="hiro"
-        marker-events
-        cube-follow
-      >
-        <a-box color="red"></a-box>
-      </a-marker>
-
-      <!-- Your NFT marker -->
       <a-nft
-        id="nft-marker"
+        id="marker"
         type="nft"
         url="UnityWebARTest/Descriptors/test2"
-        smooth="true" smoothCount="10"
-        smoothTolerance="0.01" smoothThreshold="5"
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance="0.01"
+        smoothThreshold="5"
         marker-events
         cube-follow
       >
@@ -93,13 +117,13 @@
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- Unity Canvas & Loader (unchanged) -->
+    <!-- === Unity Canvas & Loader === -->
     <div id="unity-container">
-      <canvas id="unity-canvas" width="960" height="600"></canvas>
-      <!-- …your existing loading UI… -->
+      <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
+      <!-- … your existing loading UI … -->
     </div>
     <script>
-      /* your existing Unity loader script here */
+      // … your unchanged Unity loader script here …
     </script>
   </body>
 </html>
