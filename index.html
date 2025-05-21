@@ -41,57 +41,57 @@
     <!-- 2) Define cube-follow with debug logs BEFORE the scene -->
     <script>
       AFRAME.registerComponent("cube-follow", {
-        init() {
-          this.spawned = false;
-          this.marker = this.el;
-          this.cam    = document.querySelector("[camera]");
+        init: function () {
+          this.spawned  = false;
+          // Grab the AR.js/A-Frame camera entity once
+          this.cameraEl = this.el.sceneEl.querySelector("[camera]");
+          console.log("[cube-follow] init – cameraEl is", this.cameraEl);
         },
-        tick() {
-          const u = window.unityInstance;
-          if (!u?.SendMessage) return;
+        tick: function () {
+          const unity = window.unityInstance;
+          if (!unity || typeof unity.SendMessage !== "function") {
+            return;
+          }
 
-          const vis = this.marker.object3D.visible;
+          const vis = this.el.object3D.visible;
+          // Compute world-matrices
           const markerMat = this.el.object3D.matrixWorld;
-          const camMat    = document.querySelector("[camera]").object3D.matrixWorld;
-          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
+          const camMat    = this.cameraEl.object3D.matrixWorld;  // ← defined above
 
-          const relPos      = new THREE.Vector3().setFromMatrixPosition(relMat);
-          const relQuat     = new THREE.Quaternion().setFromRotationMatrix(relMat);
-          
-          const camPos = cam.object3D.position;
-          const camQuat= cam.object3D.quaternion;
+          // Invert camera matrix
+          const camInv = new THREE.Matrix4().copy(camMat).invert();
 
-          unity.SendMessage("CameraController","UpdateTransformData",
-            JSON.stringify({
-              position: { x: camPos.x/100, y: camPos.y/100, z: -camPos.z/100 },
-              rotation: { x: -camQuat.x,  y: -camQuat.y,  z: camQuat.z,  w: camQuat.w }
-            })
-          );
+          // Relative marker-in-camera matrix
+          const relMat = new THREE.Matrix4().multiplyMatrices(camInv, markerMat);
 
+          // Extract pos & rot from that matrix
+          const relPos  = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const relQuat = new THREE.Quaternion().setFromRotationMatrix(relMat);
+
+          // 1) Spawn on first sight
           if (vis && !this.spawned) {
-            u.SendMessage("CubeSpawner","SetTracking",1);
-            u.SendMessage("CubeSpawner","SpawnCube");
+            unity.SendMessage("CubeSpawner","SetTracking",1);
+            unity.SendMessage("CubeSpawner","SpawnCube");
             this.spawned = true;
           }
+
+          // 2) While visible, push camera-relative pose every frame
           if (vis && this.spawned) {
-            u.SendMessage(
+            unity.SendMessage(
               "CubeSpawner","UpdateTransformData",
               JSON.stringify({
-                position: { x: relPos.x/100, y: relPos.y/100, z: relPos.z/100 },
-                rotation: {
-                  x: -relQuat.x, 
-                  y: -relQuat.y, 
-                  z:  relQuat.z, 
-                  w:  relQuat.w
-                }
+                position: { x: relPos.x/100,  y: relPos.y/100,  z: -relPos.z/100 },
+                rotation: { x: -relQuat.x,    y: -relQuat.y,    z: relQuat.z,    w: relQuat.w }
               })
             );
           }
+
+          // 3) On loss, destroy
           if (!vis && this.spawned) {
-            u.SendMessage("CubeSpawner","SetTracking",0);
+            unity.SendMessage("CubeSpawner","SetTracking",0);
             this.spawned = false;
           }
-        }
+        },
       });
     </script>
   </head>
