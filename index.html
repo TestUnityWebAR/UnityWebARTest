@@ -55,7 +55,7 @@
           const markerWorld = new THREE.Matrix4().copy(this.marker.object3D.matrixWorld);
           const camWorld    = new THREE.Matrix4().copy(this.cam.object3D.matrixWorld);
           // 2) compute marker‐in‐camera space
-          const camInv      = new THREE.Matrix4().getInverse(camWorld);
+          const camInv      = new THREE.Matrix4().invert(camWorld);
           const relMat      = new THREE.Matrix4().multiplyMatrices(camInv, markerWorld);
 
           const relPos      = new THREE.Vector3().setFromMatrixPosition(relMat);
