@@ -51,15 +51,22 @@
           if (!u?.SendMessage) return;
 
           const vis = this.marker.object3D.visible;
-          // 1) get world poses
-          const markerWorld = new THREE.Matrix4().copy(this.marker.object3D.matrixWorld);
-          const camWorld    = new THREE.Matrix4().copy(this.cam.object3D.matrixWorld);
-          // 2) compute marker‐in‐camera space
-          const camInv      = new THREE.Matrix4().invert(camWorld);
-          const relMat      = new THREE.Matrix4().multiplyMatrices(camInv, markerWorld);
+          const markerMat = this.el.object3D.matrixWorld;
+          const camMat    = document.querySelector("[camera]").object3D.matrixWorld;
+          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
 
           const relPos      = new THREE.Vector3().setFromMatrixPosition(relMat);
           const relQuat     = new THREE.Quaternion().setFromRotationMatrix(relMat);
+          
+          const camPos = cam.object3D.position;
+          const camQuat= cam.object3D.quaternion;
+
+          unity.SendMessage("CameraController","UpdateTransformData",
+            JSON.stringify({
+              position: { x: camPos.x/100, y: camPos.y/100, z: -camPos.z/100 },
+              rotation: { x: -camQuat.x,  y: -camQuat.y,  z: camQuat.z,  w: camQuat.w }
+            })
+          );
 
           if (vis && !this.spawned) {
             u.SendMessage("CubeSpawner","SetTracking",1);
