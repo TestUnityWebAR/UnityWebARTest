@@ -42,18 +42,24 @@
       AFRAME.registerComponent("cube-follow", {
         init: function () {
           this.spawned = false;
-          this.unity = () => window.unityInstance;
         },
         tick: function () {
+          // 1) Don’t even try until Unity is ready
+          const unity = window.unityInstance;
+          if (!unity || typeof unity.SendMessage !== "function") {
+            return; 
+          }
+
+          // 2) Now you can safely do your visibility/spawn/pose logic
           const vis = this.el.object3D.visible;
-          const unity = this.unity();
-          // On first sight: spawn & enable tracking
+
           if (vis && !this.spawned) {
             unity.SendMessage("CubeSpawner", "SetTracking", 1);
             unity.SendMessage("CubeSpawner", "SpawnCube");
             this.spawned = true;
+            console.log("[cube-follow] spawned");
           }
-          // While visible: stream pose every frame
+
           if (vis && this.spawned) {
             const { position: p, quaternion: q } = this.el.object3D;
             unity.SendMessage(
@@ -62,14 +68,16 @@
               JSON.stringify({
                 position: { x: p.x / 100, y: p.y / 100, z: p.z / 100 },
                 rotation: { x: -q.x, y: -q.y, z: q.z, w: q.w },
-                scale:    { x: s.x*100, y: s.y*100,  z: s.z*100 }
               })
             );
+            // optional debug:
+            // console.log("Updating pose:", p, q);
           }
-          // On loss: disable tracking & reset
+
           if (!vis && this.spawned) {
             unity.SendMessage("CubeSpawner", "SetTracking", 0);
             this.spawned = false;
+            console.log("[cube-follow] lost tracking");
           }
         },
       });
