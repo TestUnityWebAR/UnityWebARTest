@@ -40,7 +40,7 @@
           const u = window.unityInstance;
           if (!u?.SendMessage) return;
           u.SendMessage("CubeSpawner","SetTracking",1);
-          u.SendMessage("CubeSpawner","SpawnCube");
+          u.SendMessage("CubeSpawner","SpawnCube", this.marker.id);
           this.spawned = true;
         });
 
@@ -88,6 +88,7 @@
         u.SendMessage(
           "CubeSpawner","UpdateTransformData",
           JSON.stringify({
+            id: this.marker.id,
             position: { 
               x: px, 
               y: py, 
@@ -113,7 +114,8 @@
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
     >
       <a-nft
-        id="marker" type="nft"
+        id="marker" 
+        type="nft"
         url="UnityWebARTest/Descriptors/test2"
         smooth="true" 
         smoothCount="30"
@@ -125,6 +127,22 @@
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
+        <!-- second image -->
+      <a-nft
+        id="marker2"
+        type="nft"
+        url="UnityWebARTest/Descriptors/test3"
+        smooth="true"
+        smoothCount="30"
+        smoothTolerance="0.01"
+        smoothThreshold="5"
+        detectMinSimilarity="0.3"
+        scale="2 2 2"
+        cube-follow 
+      >
+    <a-light type="ambient" intensity="1"></a-light>
+  </a-nft>
+
       <a-entity camera></a-entity>
     </a-scene>
 
