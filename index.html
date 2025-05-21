@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en-us">
   <head>
@@ -52,9 +53,7 @@
           }
 
           const vis = this.el.object3D.visible;
-          console.log(
-            `[cube-follow] tick – visible: ${vis}, spawned: ${this.spawned}`
-          );
+          console.log(`[cube-follow] tick – visible:${vis}, spawned:${this.spawned}`);
 
           // first sight → spawn
           if (vis && !this.spawned) {
@@ -73,7 +72,7 @@
               "UpdateTransformData",
               JSON.stringify({
                 position: { x: p.x / 100, y: p.y / 100, z: p.z / 100 },
-                rotation: { x: -q.x, y: -q.y, z: q.z, w: q.w },
+                rotation: { x: -q.x, y: -q.y, z: q.z, w: q.w }
               })
             );
           }
@@ -160,21 +159,34 @@
         },
       };
 
-      const script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
+      console.log("Injecting Unity loader:", loaderUrl);
+      const unityLoader = document.createElement("script");
+      unityLoader.src = loaderUrl;
+
+      unityLoader.onload = () => {
+        console.log("Unity loader script loaded. Starting createUnityInstance()");
         createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width =
-            100 * progress + "%";
+          const pct = (100 * progress).toFixed(1) + "%";
+          console.log("Unity loading progress:", pct);
+          document.querySelector("#unity-progress-bar-full").style.width = pct;
         })
-          .then((unityInstance) => {
-            window.unityInstance = unityInstance;
-            document.querySelector("#unity-loading-bar").style.display =
-              "none";
-          })
-          .catch(console.error);
+        .then((instance) => {
+          console.log("Unity instance created");
+          window.unityInstance = instance;
+          document.querySelector("#unity-loading-bar").style.display = "none";
+        })
+        .catch((err) => {
+          console.error("Unity load failed:", err);
+          unityShowBanner("Unity failed to load", "error");
+        });
       };
-      document.body.appendChild(script);
+
+      unityLoader.onerror = (e) => {
+        console.error("Error loading Unity loader script:", e);
+        unityShowBanner("Could not load Unity loader.js", "error");
+      };
+
+      document.body.appendChild(unityLoader);
     </script>
   </body>
 </html>
