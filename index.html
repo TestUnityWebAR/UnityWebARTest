@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-us">
   <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>Unity WebARProject</title>
 
     <!-- 1) A-Frame + AR.js for NFT tracking -->
@@ -9,22 +9,72 @@
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      html, body { margin:0; padding:0; overflow:hidden; background:transparent; }
-      /* AR.js scene full-screen behind Unity */
+      html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+      /* AR.js scene fills the back */
       #scene {
-        position:absolute; top:0; left:0;
-        width:100vw; height:100vh;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
       }
-      /* Unity canvas sits on top—but remains transparent */
-      #unity-container, #unity-canvas {
-        position:absolute; top:0; left:0;
-        width:100vw; height:100vh;
-        background:transparent !important;
-        pointer-events:none;
+      /* Unity canvas sits on top, stays transparent */
+      #unity-container,
+      #unity-canvas,
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: transparent !important;
+        pointer-events: none;
       }
-      canvas { background:transparent !important; }
     </style>
+
+    <!-- 2) Define the cube-follow component BEFORE the scene -->
+    <script>
+      AFRAME.registerComponent("cube-follow", {
+        init: function () {
+          this.spawned = false;
+          this.unity = () => window.unityInstance;
+        },
+        tick: function () {
+          const vis = this.el.object3D.visible;
+          const unity = this.unity();
+          // On first sight: spawn & enable tracking
+          if (vis && !this.spawned) {
+            unity.SendMessage("CubeSpawner", "SetTracking", 1);
+            unity.SendMessage("CubeSpawner", "SpawnCube");
+            this.spawned = true;
+          }
+          // While visible: stream pose every frame
+          if (vis && this.spawned) {
+            const { position: p, quaternion: q } = this.el.object3D;
+            unity.SendMessage(
+              "CubeSpawner",
+              "UpdateTransformData",
+              JSON.stringify({
+                position: { x: p.x / 100, y: p.y / 100, z: p.z / 100 },
+                rotation: { x: -q.x, y: -q.y, z: q.z, w: q.w },
+              })
+            );
+          }
+          // On loss: disable tracking & reset
+          if (!vis && this.spawned) {
+            unity.SendMessage("CubeSpawner", "SetTracking", 0);
+            this.spawned = false;
+          }
+        },
+      });
+    </script>
   </head>
+
   <body>
     <!-- === AR.js Scene === -->
     <a-scene
@@ -34,60 +84,19 @@
       renderer="logarithmicDepthBuffer: true; alpha: true"
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
     >
-    <script>
-      AFRAME.registerComponent('cube-follow', {
-        init: function () {
-          this.spawned = false;
-          this.marker  = this.el;          // <a-nft> entity
-          this.unity   = () => window.unityInstance;
-        },
-        tick: function () {
-          const unity = this.unity();
-          const vis   = this.marker.object3D.visible;
-
-          // 1) when the marker first shows up, spawn the cube
-          if (vis && !this.spawned) {
-            unity.SendMessage('CubeSpawner', 'SetTracking', 1);
-            unity.SendMessage('CubeSpawner', 'SpawnCube');
-            this.spawned = true;
-          }
-          // 2) if it’s visible, every frame push the updated pose
-          if (vis && this.spawned) {
-            const { position: p, quaternion: q } = this.marker.object3D;
-            // convert cm→m and handle handedness exactly like you had:
-            const payload = JSON.stringify({
-              position: {
-                x: p.x/100,
-                y: p.y/100,
-                z: p.z/100
-              },
-              rotation: {
-                x: -q.x,
-                y: -q.y,
-                z:  q.z,
-                w:  q.w
-              }
-            });
-            unity.SendMessage('CubeSpawner', 'UpdateTransformData', payload);
-          }
-          // 3) if the marker goes away, tell Unity to hide the cube
-          if (!vis && this.spawned) {
-            unity.SendMessage('CubeSpawner', 'SetTracking', 0);
-            this.spawned = false;
-          }
-        }
-      });
-    </script>
       <a-nft
         id="marker"
         type="nft"
         url="UnityWebARTest/Descriptors/test2"
-        smooth="true" smoothCount="10"
-        smoothTolerance="0.01" smoothThreshold="5"
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance="0.01"
+        smoothThreshold="5"
         cube-follow
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
+
       <a-entity camera></a-entity>
     </a-scene>
 
@@ -107,87 +116,51 @@
       </div>
     </div>
 
-    <!-- === Unity Loader + AR.js → CubeSpawner Bridge === -->
+    <!-- === Unity Loader Script === -->
     <script>
-      // small banner for Unity warnings/errors
       function unityShowBanner(msg, type) {
         const b = document.querySelector("#unity-warning");
-        const div = document.createElement("div");
-        div.innerHTML = msg;
-        if (type === "error") div.style = "background:red;padding:10px;";
-        if (type === "warning") {
-          div.style = "background:yellow;padding:10px;";
-          setTimeout(()=>b.removeChild(div),5000);
-        }
-        b.appendChild(div);
+        const d = document.createElement("div");
+        d.innerHTML = msg;
+        d.style =
+          type === "error"
+            ? "background:red;padding:10px;"
+            : type === "warning"
+            ? "background:yellow;padding:10px;"
+            : "";
+        b.appendChild(d);
+        if (type === "warning") setTimeout(() => b.removeChild(d), 5000);
       }
 
-      // refs & config
-      const canvas    = document.getElementById("unity-canvas");
-      const marker    = document.getElementById("marker");
+      const canvas = document.getElementById("unity-canvas");
       const loaderUrl = "Build/UnityWebARTest.loader.js";
-      const config    = {
-        dataUrl:    "Build/UnityWebARTest.data",
-        frameworkUrl:"Build/UnityWebARTest.framework.js",
-        codeUrl:    "Build/UnityWebARTest.wasm",
-        streamingAssetsUrl:"StreamingAssets",
-        showBanner:   unityShowBanner,
+      const config = {
+        dataUrl: "Build/UnityWebARTest.data",
+        frameworkUrl: "Build/UnityWebARTest.framework.js",
+        codeUrl: "Build/UnityWebARTest.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        showBanner: unityShowBanner,
         webglContextAttributes: {
-          alpha:             true,
-          premultipliedAlpha:false
-        }
+          alpha: true,
+          premultipliedAlpha: false,
+        },
       };
 
-      // inject Unity loader
-      const loader = document.createElement("script");
-      loader.src = loaderUrl;
-      loader.onload = () => {
+      const script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full")
-                  .style.width = (100*progress) + "%";
-        }).then(unityInstance => {
-          window.unityInstance = unityInstance;
-          document.querySelector("#unity-loading-bar").style.display = "none";
-
-          // helpers for CubeSpawner
-          const sendState = v =>
-            unityInstance.SendMessage("CubeSpawner","SetTracking",v);
-
-          const sendPose = () => {
-              if (!unityInstance || !marker.object3D.visible) return;
-              const { position: p, quaternion: q } = marker.object3D;
-
-              // cm→m scale, but **no** invert on Z this time:
-              const ux = p.x / 100;
-              const uy = p.y / 100;
-              const uz = p.z / 100;         // <-- positive p.z becomes negative in world
-
-              // Handedness for rotation (keep as you had):
-              const rx = -q.x;
-              const ry = -q.y;
-              const rz =  q.z;
-              const rw =  q.w;
-
-              const payload = JSON.stringify({
-                position: { x: ux, y: uy, z: uz },
-                rotation: { x: rx, y: ry, z: rz, w: rw }
-              });
-
-              console.log("JS → Unity JSON:", payload);
-              unityInstance.SendMessage("CubeSpawner", "UpdateTransformData", payload);
-            };
-
-            marker.addEventListener("markerFound", () => {
-              unityInstance.SendMessage("CubeSpawner", "SetTracking", 1);
-              sendPose();
-              unityInstance.SendMessage("CubeSpawner", "SpawnCube");
-            });
-            marker.addEventListener("markerLost",  () => unityInstance.SendMessage("CubeSpawner", "SetTracking", 0));
-            marker.addEventListener("componentchanged", sendPose);
-
-          }).catch(console.error);
-        };
-        document.body.appendChild(loader);
+          document.querySelector("#unity-progress-bar-full").style.width =
+            100 * progress + "%";
+        })
+          .then((unityInstance) => {
+            window.unityInstance = unityInstance;
+            document.querySelector("#unity-loading-bar").style.display =
+              "none";
+          })
+          .catch(console.error);
+      };
+      document.body.appendChild(script);
     </script>
   </body>
 </html>
