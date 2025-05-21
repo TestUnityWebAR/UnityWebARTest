@@ -44,7 +44,7 @@
         init() {
           this.spawned = false;
           this.marker = this.el;
-          this.cam    = document.querySelector("[camera]");
+          this.cam    = this.el.sceneEl.querySelector("[camera]");
         },
         tick() {
           const u = window.unityInstance;
