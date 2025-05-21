@@ -37,30 +37,36 @@
       }
     </style>
 
-    <!-- 2) Define the cube-follow component BEFORE the scene -->
+    <!-- 2) Define cube-follow with debug logs BEFORE the scene -->
     <script>
       AFRAME.registerComponent("cube-follow", {
         init: function () {
           this.spawned = false;
+          console.log("[cube-follow] init on", this.el.tagName, "#"+this.el.id);
         },
         tick: function () {
-          // 1) Don’t even try until Unity is ready
           const unity = window.unityInstance;
           if (!unity || typeof unity.SendMessage !== "function") {
-            return; 
+            console.log("[cube-follow] waiting for Unity…");
+            return;
           }
 
-          // 2) Now you can safely do your visibility/spawn/pose logic
           const vis = this.el.object3D.visible;
+          console.log(
+            `[cube-follow] tick – visible: ${vis}, spawned: ${this.spawned}`
+          );
 
+          // first sight → spawn
           if (vis && !this.spawned) {
+            console.log("[cube-follow] → spawning cube");
             unity.SendMessage("CubeSpawner", "SetTracking", 1);
             unity.SendMessage("CubeSpawner", "SpawnCube");
             this.spawned = true;
-            console.log("[cube-follow] spawned");
           }
 
+          // while visible → update pose
           if (vis && this.spawned) {
+            console.log("[cube-follow] → updating pose");
             const { position: p, quaternion: q } = this.el.object3D;
             unity.SendMessage(
               "CubeSpawner",
@@ -70,14 +76,13 @@
                 rotation: { x: -q.x, y: -q.y, z: q.z, w: q.w },
               })
             );
-            // optional debug:
-            // console.log("Updating pose:", p, q);
           }
 
+          // lost → disable
           if (!vis && this.spawned) {
+            console.log("[cube-follow] → lost marker");
             unity.SendMessage("CubeSpawner", "SetTracking", 0);
             this.spawned = false;
-            console.log("[cube-follow] lost tracking");
           }
         },
       });
