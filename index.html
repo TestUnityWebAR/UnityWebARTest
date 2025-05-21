@@ -41,49 +41,50 @@
     <!-- 2) Define cube-follow with debug logs BEFORE the scene -->
     <script>
       AFRAME.registerComponent("cube-follow", {
-        init: function () {
+        init() {
           this.spawned = false;
-          console.log("[cube-follow] init on", this.el.tagName, "#"+this.el.id);
+          this.marker = this.el;
+          this.cam    = document.querySelector("[camera]");
         },
-        tick: function () {
-          const unity = window.unityInstance;
-          if (!unity || typeof unity.SendMessage !== "function") {
-            console.log("[cube-follow] waiting for Unity…");
-            return;
-          }
+        tick() {
+          const u = window.unityInstance;
+          if (!u?.SendMessage) return;
 
-          const vis = this.el.object3D.visible;
-          console.log(`[cube-follow] tick – visible:${vis}, spawned:${this.spawned}`);
+          const vis = this.marker.object3D.visible;
+          // 1) get world poses
+          const markerWorld = new THREE.Matrix4().copy(this.marker.object3D.matrixWorld);
+          const camWorld    = new THREE.Matrix4().copy(this.cam.object3D.matrixWorld);
+          // 2) compute marker‐in‐camera space
+          const camInv      = new THREE.Matrix4().getInverse(camWorld);
+          const relMat      = new THREE.Matrix4().multiplyMatrices(camInv, markerWorld);
 
-          // first sight → spawn
+          const relPos      = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const relQuat     = new THREE.Quaternion().setFromRotationMatrix(relMat);
+
           if (vis && !this.spawned) {
-            console.log("[cube-follow] → spawning cube");
-            unity.SendMessage("CubeSpawner", "SetTracking", 1);
-            unity.SendMessage("CubeSpawner", "SpawnCube");
+            u.SendMessage("CubeSpawner","SetTracking",1);
+            u.SendMessage("CubeSpawner","SpawnCube");
             this.spawned = true;
           }
-
-          // while visible → update pose
           if (vis && this.spawned) {
-            console.log("[cube-follow] → updating pose");
-            const { position: p, quaternion: q } = this.el.object3D;
-            unity.SendMessage(
-              "CubeSpawner",
-              "UpdateTransformData",
+            u.SendMessage(
+              "CubeSpawner","UpdateTransformData",
               JSON.stringify({
-                position: { x: p.x / 100, y: p.y / 100, z: p.z / 100 },
-                rotation: { x: -q.x, y: -q.y, z: q.z, w: q.w }
+                position: { x: relPos.x/100, y: relPos.y/100, z: -relPos.z/100 },
+                rotation: {
+                  x: -relQuat.x, 
+                  y: -relQuat.y, 
+                  z:  relQuat.z, 
+                  w:  relQuat.w
+                }
               })
             );
           }
-
-          // lost → disable
           if (!vis && this.spawned) {
-            console.log("[cube-follow] → lost marker");
-            unity.SendMessage("CubeSpawner", "SetTracking", 0);
+            u.SendMessage("CubeSpawner","SetTracking",0);
             this.spawned = false;
           }
-        },
+        }
       });
     </script>
   </head>
