@@ -27,71 +27,75 @@
     </style>
 
     <script>
-      AFRAME.registerComponent("cube-follow", {
-        init() {
-          console.log("[cube-follow] init running on", this.el);
-          this.spawned   = false;
+    AFRAME.registerComponent("cube-follow", {
+      init() {
+        console.log("[cube-follow] init on", this.el);
+        this.spawned   = false;
+        this.lostCount = 0;
+        this.marker    = this.el;
+        this.cam       = this.el.sceneEl.querySelector("[camera]");
+
+        this.el.addEventListener("markerFound", () => {
           this.lostCount = 0;
-          this.marker    = this.el;
-          this.cam       = this.el.sceneEl.querySelector("[camera]");
-
-          this.el.addEventListener("markerFound", () => {
-            this.lostCount = 0;
-            const u = window.unityInstance;
-            if (!u?.SendMessage) return;
-            u.SendMessage("CubeSpawner","SetTracking",1);
-            u.SendMessage("CubeSpawner","SpawnCube");
-            this.spawned = true;
-          });
-
-          this.el.addEventListener("markerLost", () => {
-            console.log("[cube-follow] markerLost (debouncing)");
-          });
-        },
-
-        tick() {
           const u = window.unityInstance;
-          if (!u?.SendMessage || !this.spawned) return;
+          if (!u?.SendMessage) return;
+          u.SendMessage("CubeSpawner","SetTracking",1);
+          u.SendMessage("CubeSpawner","SpawnCube");
+          this.spawned = true;
+        });
 
-          // debounce destroy
-          const vis = this.marker.object3D.visible;
-          if (!vis) {
-            if (++this.lostCount > 5) {
-              console.log("[cube-follow] markerLost confirmed → destroying");
-              u.SendMessage("CubeSpawner","SetTracking",0);
-              this.spawned   = false;
-              this.lostCount = 0;
-            }
-            return;
+        this.el.addEventListener("markerLost", () => {
+          console.log("[cube-follow] markerLost (debouncing)");
+        });
+      },
+
+      tick() {
+        const u = window.unityInstance;
+        if (!u?.SendMessage || !this.spawned) return;
+
+        // debounce small blips
+        const vis = this.marker.object3D.visible;
+        if (!vis) {
+          if (++this.lostCount > 5) {
+            console.log("[cube-follow] confirmed lost → destroying");
+            u.SendMessage("CubeSpawner","SetTracking",0);
+            this.spawned   = false;
+            this.lostCount = 0;
           }
-          this.lostCount = 0;
-
-          // grab marker world‐space pose
-          const worldPos  = new THREE.Vector3();
-          const worldQuat = new THREE.Quaternion();
-          this.marker.object3D.getWorldPosition(worldPos);
-          this.marker.object3D.getWorldQuaternion(worldQuat);
-
-          // send one‐time Z flip, divide mm→m by 1000
-          u.SendMessage(
-            "CubeSpawner","UpdateTransformData",
-            JSON.stringify({
-              position: {
-                x: worldPos.x/1000,
-                y: worldPos.y/1000,
-                z: -worldPos.z/1000
-              },
-              rotation: {
-                x: worldQuat.x,
-                y: worldQuat.y,
-                z: -worldQuat.z,
-                w: worldQuat.w
-              }
-            })
-          );
+          return;
         }
-      });
-    </script>
+        this.lostCount = 0;
+
+        // 1) grab world‐space pose of the marker
+        const worldPos  = new THREE.Vector3();
+        const worldQuat = new THREE.Quaternion();
+        this.marker.object3D.getWorldPosition(worldPos);
+        this.marker.object3D.getWorldQuaternion(worldQuat);
+
+        // 2) convert: mm→m, flip Z once, then optionally stretch & lift
+        const DIST_FACTOR = 1.0;    // if you want farther, bump this >1
+        const Y_OFFSET    = 0.05;   //  5cm up so the cube sits atop the plane
+
+        const px = (worldPos.x / 1000) * DIST_FACTOR;
+        const py = (worldPos.y / 1000) * DIST_FACTOR + Y_OFFSET;
+        const pz = -(worldPos.z / 1000) * DIST_FACTOR;
+
+        // 3) send into Unity
+        u.SendMessage(
+          "CubeSpawner","UpdateTransformData",
+          JSON.stringify({
+            position: { x: px, y: py, z: pz },
+            rotation: {
+              x: worldQuat.x,
+              y: worldQuat.y,
+              z: -worldQuat.z,   // only flip Z here
+              w: worldQuat.w
+            }
+          })
+        );
+      }
+    });
+  </script>
   </head>
 
   <body>
