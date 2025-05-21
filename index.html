@@ -168,20 +168,23 @@
 
       unityLoader.onload = () => {
         console.log("Unity loader script loaded. Starting createUnityInstance()");
-        createUnityInstance(canvas, config, (progress) => {
-          const pct = (100 * progress).toFixed(1) + "%";
-          console.log("Unity loading progress:", pct);
-          document.querySelector("#unity-progress-bar-full").style.width = pct;
-        })
-        .then((instance) => {
-          console.log("Unity instance created");
-          window.unityInstance = instance;
-          document.querySelector("#unity-loading-bar").style.display = "none";
-        })
-        .catch((err) => {
-          console.error("Unity load failed:", err);
-          unityShowBanner("Unity failed to load", "error");
-        });
+        if (!window.unityInstance) 
+        {
+          createUnityInstance(canvas, config, (progress) => {
+            const pct = (100 * progress).toFixed(1) + "%";
+            console.log("Unity loading progress:", pct);
+            document.querySelector("#unity-progress-bar-full").style.width = pct;
+          })
+          .then((instance) => {
+            console.log("Unity instance created");
+            window.unityInstance = instance;
+            document.querySelector("#unity-loading-bar").style.display = "none";
+          })
+          .catch((err) => {
+            console.error("Unity load failed:", err);
+            unityShowBanner("Unity failed to load", "error");
+          });
+        }
       };
 
       unityLoader.onerror = (e) => {
