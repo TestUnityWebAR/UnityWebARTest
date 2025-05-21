@@ -62,6 +62,7 @@
               JSON.stringify({
                 position: { x: p.x / 100, y: p.y / 100, z: p.z / 100 },
                 rotation: { x: -q.x, y: -q.y, z: q.z, w: q.w },
+                scale:    { x: s.x*100, y: s.y*100,  z: s.z*100 }
               })
             );
           }
