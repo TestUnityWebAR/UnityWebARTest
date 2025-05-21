@@ -45,52 +45,42 @@
           this.spawned = false;
           this.marker = this.el;
           this.cam    = this.el.sceneEl.querySelector("[camera]");
-        },
-        tick() {
-          const unity = window.unityInstance;
-          if (!unity?.SendMessage) return;
-
-          const vis = this.marker.object3D.visible;
-          const markerMat = this.el.object3D.matrixWorld;
-          const camMat    = document.querySelector("[camera]").object3D.matrixWorld;
-          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
-
-          const relPos      = new THREE.Vector3().setFromMatrixPosition(relMat);
-          const relQuat     = new THREE.Quaternion().setFromRotationMatrix(relMat);
-          
-          const camPos = this.cam.object3D.position;
-          const camQuat= this.cam.object3D.quaternion;
-
-          unity.SendMessage("CameraController","UpdateTransformData",
-            JSON.stringify({
-              position: { x: camPos.x/100, y: camPos.y/100, z: -camPos.z/100 },
-              rotation: { x: -camQuat.x,  y: -camQuat.y,  z: camQuat.z,  w: camQuat.w }
-            })
-          );
-
-          if (vis && !this.spawned) {
+        
+          this.el.addEventListener("markerFound", ()=>{
+            const unity = window.unityInstance;
+            if(!unity?.SendMessage) return;
             unity.SendMessage("CubeSpawner","SetTracking",1);
             unity.SendMessage("CubeSpawner","SpawnCube");
             this.spawned = true;
-          }
-          if (vis && this.spawned) {
-            unity.SendMessage(
-              "CubeSpawner","UpdateTransformData",
-              JSON.stringify({
-                position: { x: relPos.x/100, y: relPos.y/100, z: relPos.z/100 },
-                rotation: {
-                  x: -relQuat.x, 
-                  y: -relQuat.y, 
-                  z:  relQuat.z, 
-                  w:  relQuat.w
-                }
-              })
-            );
-          }
-          if (!vis && this.spawned) {
-            unity.SendMessage("CubeSpawner","SetTracking",0);
+          });
+          this.el.addEventListener("markerFound", ()=>{
+            const unity = window.unityInstance;
+            if (!unity?.SendMessage) return;
+            unity.SendMessage("CubeSpawner","SetTracking", 0);
             this.spawned = false;
-          }
+          });
+        
+        },
+
+        tick() {
+          const unity = window.unityInstance;
+          if (!unity?.SendMessage || !this.spawned) return;
+
+          // — compute camera‐relative marker pose as before —
+          const markerMat = this.marker.object3D.matrixWorld;
+          const camMat    = this.cam.object3D.matrixWorld;
+          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
+          const relPos  = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const relQuat = new THREE.Quaternion().setFromRotationMatrix(relMat);
+
+          // — send the cube’s transform update —
+          unity.SendMessage(
+            "CubeSpawner","UpdateTransformData",
+            JSON.stringify({
+              position: { x: relPos.x/100, y: relPos.y/100, z: -relPos.z/100 },
+              rotation: { x: -relQuat.x,  y: -relQuat.y,  z:  relQuat.z, w: relQuat.w }
+            })
+          );
         }
       });
     </script>
