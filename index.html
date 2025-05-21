@@ -72,6 +72,11 @@
           const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
           const relPos  = new THREE.Vector3().setFromMatrixPosition(relMat);
           const relQuat = new THREE.Quaternion().setFromRotationMatrix(relMat);
+          
+          console.log("JS → Unity JSON:", {
+            x: relPos.x/100, y: relPos.y/100, z: -relPos.z/100,
+            q: relQuat
+          });
 
           // — send the cube’s transform update —
           unity.SendMessage(
