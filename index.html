@@ -72,6 +72,10 @@
         this.marker.object3D.getWorldPosition(worldPos);
         this.marker.object3D.getWorldQuaternion(worldQuat);
 
+        const camQuat = new THREE.Quaternion();
+        this.cam.object3D.getWorldQuaternion(camQuat);
+        const relQuat = camQuat.clone().invert().multiply(worldQuat);
+
         // 2) convert: mm→m, flip Z once, then optionally stretch & lift
         const DIST_FACTOR = 1.0;    // if you want farther, bump this >1
         const Y_OFFSET    = 0.05;   //  5cm up so the cube sits atop the plane
@@ -84,12 +88,15 @@
         u.SendMessage(
           "CubeSpawner","UpdateTransformData",
           JSON.stringify({
-            position: { x: px, y: py, z: pz },
+            position: { 
+              x: px, 
+              y: py, 
+              z: pz },
             rotation: {
-              x: worldQuat.x,
-              y: worldQuat.y,
-              z: -worldQuat.z,   // only flip Z here
-              w: worldQuat.w
+              x: relQuat.x,
+              y: relQuat.y,
+              z: -relQuat.z,   // still single Z‐flip for handedness
+              w: relQuat.w
             }
           })
         );
