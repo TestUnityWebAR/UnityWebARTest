@@ -47,8 +47,8 @@
           this.cam    = this.el.sceneEl.querySelector("[camera]");
         },
         tick() {
-          const u = window.unityInstance;
-          if (!u?.SendMessage) return;
+          const unity = window.unityInstance;
+          if (!unity?.SendMessage) return;
 
           const vis = this.marker.object3D.visible;
           const markerMat = this.el.object3D.matrixWorld;
@@ -69,12 +69,12 @@
           );
 
           if (vis && !this.spawned) {
-            u.SendMessage("CubeSpawner","SetTracking",1);
-            u.SendMessage("CubeSpawner","SpawnCube");
+            unity.SendMessage("CubeSpawner","SetTracking",1);
+            unity.SendMessage("CubeSpawner","SpawnCube");
             this.spawned = true;
           }
           if (vis && this.spawned) {
-            u.SendMessage(
+            unity.SendMessage(
               "CubeSpawner","UpdateTransformData",
               JSON.stringify({
                 position: { x: relPos.x/100, y: relPos.y/100, z: relPos.z/100 },
@@ -88,7 +88,7 @@
             );
           }
           if (!vis && this.spawned) {
-            u.SendMessage("CubeSpawner","SetTracking",0);
+            unity.SendMessage("CubeSpawner","SetTracking",0);
             this.spawned = false;
           }
         }
