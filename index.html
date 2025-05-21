@@ -41,6 +41,7 @@
     <script>
       AFRAME.registerComponent("cube-follow", {
         init() {
+          console.log("[cube-follow] init running on", this.el);
           this.spawned   = false;
           this.lostCount = 0;
           this.marker    = this.el;
