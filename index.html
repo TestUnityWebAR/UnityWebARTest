@@ -38,47 +38,58 @@
       }
     </style>
 
-    <!-- 2) Define cube-follow with debug logs BEFORE the scene -->
     <script>
       AFRAME.registerComponent("cube-follow", {
         init() {
-          this.spawned = false;
-          this.marker = this.el;
-          this.cam    = this.el.sceneEl.querySelector("[camera]");
-        
-          this.el.addEventListener("markerFound", ()=>{
+          this.spawned   = false;
+          this.lostCount = 0;
+          this.marker    = this.el;
+          this.cam       = this.el.sceneEl.querySelector("[camera]");
+
+          // when we first see the marker, reset lostCount & spawn
+          this.el.addEventListener("markerFound", () => {
+            this.lostCount = 0;
             const unity = window.unityInstance;
-            if(!unity?.SendMessage) return;
+            if (!unity?.SendMessage) return;
             unity.SendMessage("CubeSpawner","SetTracking",1);
             unity.SendMessage("CubeSpawner","SpawnCube");
             this.spawned = true;
           });
-          this.el.addEventListener("markerFound", ()=>{
-            const unity = window.unityInstance;
-            if (!unity?.SendMessage) return;
-            unity.SendMessage("CubeSpawner","SetTracking", 0);
-            this.spawned = false;
+
+          // on markerLost, we no longer destroy immediately—
+          // just let tick() handle the debounce
+          this.el.addEventListener("markerLost", () => {
+            console.log("[cube-follow] markerLost (debouncing)");
+            // we don’t destroy here, just start counting in tick()
           });
-        
         },
 
         tick() {
           const unity = window.unityInstance;
           if (!unity?.SendMessage || !this.spawned) return;
 
-          // — compute camera‐relative marker pose as before —
+          const vis = this.marker.object3D.visible;
+          if (!vis) {
+            // only destroy after 5 consecutive lost‐frames
+            if (++this.lostCount > 5) {
+              console.log("[cube-follow] markerLost confirmed → destroying");
+              unity.SendMessage("CubeSpawner","SetTracking",0);
+              this.spawned   = false;
+              this.lostCount = 0;
+            }
+            return;
+          }
+
+          // marker visible again, reset counter
+          this.lostCount = 0;
+
+          // compute relative pose and send updates as before
           const markerMat = this.marker.object3D.matrixWorld;
           const camMat    = this.cam.object3D.matrixWorld;
           const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
-          const relPos  = new THREE.Vector3().setFromMatrixPosition(relMat);
-          const relQuat = new THREE.Quaternion().setFromRotationMatrix(relMat);
-          
-          console.log("JS → Unity JSON:", {
-            x: relPos.x/100, y: relPos.y/100, z: -relPos.z/100,
-            q: relQuat
-          });
+          const relPos    = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const relQuat   = new THREE.Quaternion().setFromRotationMatrix(relMat);
 
-          // — send the cube’s transform update —
           unity.SendMessage(
             "CubeSpawner","UpdateTransformData",
             JSON.stringify({
