@@ -34,12 +34,57 @@
       renderer="logarithmicDepthBuffer: true; alpha: true"
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
     >
+    <script>
+      AFRAME.registerComponent('cube-follow', {
+        init: function () {
+          this.spawned = false;
+          this.marker  = this.el;          // <a-nft> entity
+          this.unity   = () => window.unityInstance;
+        },
+        tick: function () {
+          const unity = this.unity();
+          const vis   = this.marker.object3D.visible;
+
+          // 1) when the marker first shows up, spawn the cube
+          if (vis && !this.spawned) {
+            unity.SendMessage('CubeSpawner', 'SetTracking', 1);
+            unity.SendMessage('CubeSpawner', 'SpawnCube');
+            this.spawned = true;
+          }
+          // 2) if it’s visible, every frame push the updated pose
+          if (vis && this.spawned) {
+            const { position: p, quaternion: q } = this.marker.object3D;
+            // convert cm→m and handle handedness exactly like you had:
+            const payload = JSON.stringify({
+              position: {
+                x: p.x/100,
+                y: p.y/100,
+                z: p.z/100
+              },
+              rotation: {
+                x: -q.x,
+                y: -q.y,
+                z:  q.z,
+                w:  q.w
+              }
+            });
+            unity.SendMessage('CubeSpawner', 'UpdateTransformData', payload);
+          }
+          // 3) if the marker goes away, tell Unity to hide the cube
+          if (!vis && this.spawned) {
+            unity.SendMessage('CubeSpawner', 'SetTracking', 0);
+            this.spawned = false;
+          }
+        }
+      });
+    </script>
       <a-nft
         id="marker"
         type="nft"
         url="UnityWebARTest/Descriptors/test2"
         smooth="true" smoothCount="10"
         smoothTolerance="0.01" smoothThreshold="5"
+        cube-follow
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
