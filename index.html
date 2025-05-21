@@ -19,7 +19,8 @@
     /* Unity canvas & container always full-screen, but hidden via visibility */
     #unity-container,
     #unity-canvas {
-      position:absolute; top:0; left:0;
+      position:absolute; 
+      top:0; left:0;
       width:100vw; height:100vh;
       background:transparent !important;
       pointer-events:none;
@@ -115,7 +116,8 @@
     embedded
     vr-mode-ui="enabled: false"
     renderer="alpha:true;antialias:true"
-    arjs="trackingMethod:best;sourceType:webcam;debugUIEnabled:true;"
+    background="color: #000000; opacity: 0"
+    arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
   >
     <a-nft
       id="marker"
