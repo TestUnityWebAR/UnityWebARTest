@@ -1,0 +1,39 @@
+name: 🔄 Sync AR Markers
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Get the website code
+      - name: Checkout website
+        uses: actions/checkout@v3
+
+      # 2) Pull in the private Unity repo
+      - name: Checkout Unity project
+        uses: actions/checkout@v3
+        with:
+          repository: TestUnityWebAR/ExperimentalUnityWebARProject
+          path: unity
+          token: ${{ secrets.UNITY_REPO_PAT }}
+
+      # 3) Copy manifest + descriptors into the site
+      - name: Copy marker assets
+        run: |
+          cp unity/Assets/StreamingAssets/markerManifest.json public/markerManifest.json
+          rm -rf public/Descriptors
+          cp -R unity/Assets/StreamingAssets/Descriptors public/Descriptors
+
+      # 4) Commit & push back to website
+      - name: Commit & Push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/markerManifest.json public/Descriptors
+          git commit -m "🔄 sync AR markers from Unity" || echo "No changes"
+          git push
