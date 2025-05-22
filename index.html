@@ -70,39 +70,34 @@
         }
         this.lostCount = 0;
 
-        //grab marker’s world‐space pose (in meters):
-        const worldPos  = new THREE.Vector3();
-        this.marker.object3D.getWorldPosition(worldPos);
-
-        //grab orientation exactly as before
+        // 1) get the raw AR.js pose (in millimetres)
+        const worldPos = new THREE.Vector3();
         const worldQuat = new THREE.Quaternion();
+        this.marker.object3D.getWorldPosition(worldPos);
         this.marker.object3D.getWorldQuaternion(worldQuat);
-        const camQuat   = new THREE.Quaternion();
+
+        // 2) camera’s world‐space orientation
+        const camQuat = new THREE.Quaternion();
         this.cam.object3D.getWorldQuaternion(camQuat);
-        const relQuat   = camQuat.clone().invert().multiply(worldQuat);
 
-        // //convert: mm→m, flip Z once, then optionally stretch & lift
-        // const DIST_FACTOR = 3.0;    // This is where the cube will be placed, 
-        // const Y_OFFSET    = 0.05;   //  5cm up so the cube sits atop the plane
+        // 3) compute rotation **relative to the camera**
+        const relQuat = camQuat.clone().invert().multiply(worldQuat);
 
-        // const px = (worldPos.x/1000) * DIST_FACTOR;
-        // const py = (worldPos.y/1000) * DIST_FACTOR + Y_OFFSET;
-        // const pz = -(worldPos.z/1000) * DIST_FACTOR;
+        // 4) convert to metres
+        const METERS  = worldPos.clone().divideScalar(1000);
 
-        // 2) convert to metres
-        const posM = worldPos.clone().divideScalar(1000);
+        // 3) optionally push it out further (or closer)
+        const DIST_FACTOR = 1.5;    // 1.0→exactly at the real marker distance
+        const Y_OFFSET    = 0.05;   // lift it 5 cm above the plane
+        const px = posM.x * DIST_FACTOR;
+        const py = posM.y * DIST_FACTOR + Y_OFFSET;
+        const pz = -posM.z * DIST_FACTOR;  // flip Z so “forward” is into the scene
 
-        // 3a) Vary by a factor of the real marker distance:
-        const DIST_FACTOR = 2.5;  
-        const spawnPosByFactor = posM.clone().multiplyScalar(DIST_FACTOR);
-
-        // 3b) Or place at a fixed distance from the camera:
-        const ABS_DIST = 2.0;  
-        const dir       = posM.clone().normalize();  
-        const spawnPosFixed = dir.clone().multiplyScalar(ABS_DIST);
-
-        // 4) send whichever you like into Unity
-        const p = spawnPosByFactor;  
+        // debug it
+        console.log(
+          `[${this.marker.id}] worldPos (mm):`, worldPos.toArray().map(n=>n.toFixed(1)),
+          `→ spawn (m):`, [px,py,pz].map(n=>n.toFixed(3))
+        );
 
         //send into Unity
         u.SendMessage(
@@ -110,9 +105,9 @@
           JSON.stringify({
             id: this.marker.id,
             position: { 
-              x: p.x, 
-              y: p.y, 
-              z: p.z },
+              x: px, 
+              y: py, 
+              z: pz },
             rotation: {
               x: relQuat.x,
               y: relQuat.y,
