@@ -70,17 +70,23 @@
         }
         this.lostCount = 0;
 
-        // 1) grab world‐space pose of the marker
+        //grab world‐space pose of the marker
         const worldPos  = new THREE.Vector3();
         const worldQuat = new THREE.Quaternion();
         this.marker.object3D.getWorldPosition(worldPos);
         this.marker.object3D.getWorldQuaternion(worldQuat);
 
+        //Camera's position
+        const camPos = new THREE.Vector3();
+        this.cam.object3D.getWorldPosition(camPos);
+        const relPos = worldPos.clone().sub(camPos);
+
+        //Camera's Orientation
         const camQuat = new THREE.Quaternion();
         this.cam.object3D.getWorldQuaternion(camQuat);
         const relQuat = camQuat.clone().invert().multiply(worldQuat);
 
-        // 2) convert: mm→m, flip Z once, then optionally stretch & lift
+        //convert: mm→m, flip Z once, then optionally stretch & lift
         const DIST_FACTOR = 3.0;    // This is where the cube will be placed, 
         const Y_OFFSET    = 0.05;   //  5cm up so the cube sits atop the plane
 
