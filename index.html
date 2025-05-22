@@ -73,20 +73,36 @@
         //grab marker’s world‐space pose (in meters):
         const worldPos  = new THREE.Vector3();
         this.marker.object3D.getWorldPosition(worldPos);
+
         //grab orientation exactly as before
-        const worldQuat = new THREE.Quaternion();
-        this.marker.object3D.getWorldQuaternion(worldQuat);
-        const camQuat   = new THREE.Quaternion();
-        this.cam.object3D.getWorldQuaternion(camQuat);
-        const relQuat   = camQuat.clone().invert().multiply(worldQuat);
+        // const worldQuat = new THREE.Quaternion();
+        // this.marker.object3D.getWorldQuaternion(worldQuat);
+        // const camQuat   = new THREE.Quaternion();
+        // this.cam.object3D.getWorldQuaternion(camQuat);
+        // const relQuat   = camQuat.clone().invert().multiply(worldQuat);
 
-        //convert: mm→m, flip Z once, then optionally stretch & lift
-        const DIST_FACTOR = 3.0;    // This is where the cube will be placed, 
-        const Y_OFFSET    = 0.05;   //  5cm up so the cube sits atop the plane
+        // //convert: mm→m, flip Z once, then optionally stretch & lift
+        // const DIST_FACTOR = 3.0;    // This is where the cube will be placed, 
+        // const Y_OFFSET    = 0.05;   //  5cm up so the cube sits atop the plane
 
-        const px = (worldPos.x/1000) * DIST_FACTOR;
-        const py = (worldPos.y/1000) * DIST_FACTOR + Y_OFFSET;
-        const pz = -(worldPos.z/1000) * DIST_FACTOR;
+        // const px = (worldPos.x/1000) * DIST_FACTOR;
+        // const py = (worldPos.y/1000) * DIST_FACTOR + Y_OFFSET;
+        // const pz = -(worldPos.z/1000) * DIST_FACTOR;
+
+        // 2) convert to metres
+        const posM = worldPos.clone().divideScalar(1000);
+
+        // 3a) Vary by a factor of the real marker distance:
+        const DIST_FACTOR = 2.5;  
+        const spawnPosByFactor = posM.clone().multiplyScalar(DIST_FACTOR);
+
+        // 3b) Or place at a fixed distance from the camera:
+        const ABS_DIST = 2.0;  
+        const dir       = posM.clone().normalize();  
+        const spawnPosFixed = dir.clone().multiplyScalar(ABS_DIST);
+
+        // 4) send whichever you like into Unity
+        const p = spawnPosByFactor;  
 
         console.log(`[${this.marker.id}] worldPos:`, worldPos.toArray().map(v=>v.toFixed(3)));
         console.log(`[${this.marker.id}] px,py,pz:`, [px,py,pz].map(v=>v.toFixed(3)));
