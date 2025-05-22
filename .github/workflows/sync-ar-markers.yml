@@ -21,6 +21,7 @@ jobs:
           repository: TestUnityWebAR/ExperimentalUnityWebARProject
           path: unity
           token: ${{ secrets.UNITY_REPO_PAT }}
+          persist-credentials: false
 
       # 3) Copy manifest + descriptors into the site
       - name: Copy marker assets
