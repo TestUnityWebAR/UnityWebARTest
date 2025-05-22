@@ -89,9 +89,9 @@
         // 3) optionally push it out further (or closer)
         const DIST_FACTOR = 1.5;    // 1.0→exactly at the real marker distance
         const Y_OFFSET    = 0.05;   // lift it 5 cm above the plane
-        const px = posM.x * DIST_FACTOR;
-        const py = posM.y * DIST_FACTOR + Y_OFFSET;
-        const pz = -posM.z * DIST_FACTOR;  // flip Z so “forward” is into the scene
+        const px = METERS.x * DIST_FACTOR;
+        const py = METERS.y * DIST_FACTOR + Y_OFFSET;
+        const pz = -METERS.z * DIST_FACTOR;  // flip Z so “forward” is into the scene
 
         // debug it
         console.log(
