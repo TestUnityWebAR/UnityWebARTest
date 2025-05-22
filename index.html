@@ -70,21 +70,15 @@
         }
         this.lostCount = 0;
 
-        //grab world‐space pose of the marker
+        //grab marker’s world‐space pose (in meters):
         const worldPos  = new THREE.Vector3();
-        const worldQuat = new THREE.Quaternion();
         this.marker.object3D.getWorldPosition(worldPos);
+        //grab orientation exactly as before
+        const worldQuat = new THREE.Quaternion();
         this.marker.object3D.getWorldQuaternion(worldQuat);
-
-        //Camera's position
-        const camPos = new THREE.Vector3();
-        this.cam.object3D.getWorldPosition(camPos);
-        const relPos = worldPos.clone().sub(camPos);
-
-        //Camera's Orientation
-        const camQuat = new THREE.Quaternion();
+        const camQuat   = new THREE.Quaternion();
         this.cam.object3D.getWorldQuaternion(camQuat);
-        const relQuat = camQuat.clone().invert().multiply(worldQuat);
+        const relQuat   = camQuat.clone().invert().multiply(worldQuat);
 
         //convert: mm→m, flip Z once, then optionally stretch & lift
         const DIST_FACTOR = 3.0;    // This is where the cube will be placed, 
@@ -94,15 +88,10 @@
         const py = (worldPos.y) * DIST_FACTOR + Y_OFFSET;
         const pz = -(worldPos.z) * DIST_FACTOR;
 
-        console.log(`[cube-follow] ${this.marker.id} worldPos:`, 
-        worldPos.toArray().map(v=>v.toFixed(3)),
-        `camPos:`, camPos.toArray().map(v=>v.toFixed(3)),
-        `relPos:`, relPos.toArray().map(v=>v.toFixed(3)));
+        console.log(`[${this.marker.id}] worldPos:`, worldPos.toArray().map(v=>v.toFixed(3)));
+        console.log(`[${this.marker.id}] px,py,pz:`, [px,py,pz].map(v=>v.toFixed(3)));
 
-        console.log(`[cube-follow] ${this.marker.id} px,py,pz:`, 
-        [px,py,pz].map(v=>v.toFixed(3)));
-
-        // 3) send into Unity
+        //send into Unity
         u.SendMessage(
           "CubeSpawner","UpdateTransformData",
           JSON.stringify({
