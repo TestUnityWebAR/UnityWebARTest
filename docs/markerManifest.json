@@ -1,7 +1,7 @@
 {
     "urls": [
-        "/UnityWebARTest/Descriptors/amongus/amongus",
-        "/UnityWebARTest/Descriptors/hiro/hiro",
-        "/UnityWebARTest/Descriptors/kirby/kirby"
+        "Descriptors/amongus/amongus",
+        "Descriptors/hiro/hiro",
+        "Descriptors/kirby/kirby"
     ]
 }
