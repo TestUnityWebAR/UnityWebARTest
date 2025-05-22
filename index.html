@@ -46,6 +46,7 @@
         });
 
         this.el.addEventListener("markerLost", () => {
+          const u = window.unityInstance;
           u.SendMessage("CubeSpawner","DestroyCube", this.marker.id);
           this.spawned = false;
         });
