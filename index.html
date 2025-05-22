@@ -84,9 +84,17 @@
         const DIST_FACTOR = 3.0;    // This is where the cube will be placed, 
         const Y_OFFSET    = 0.05;   //  5cm up so the cube sits atop the plane
 
-        const px = (worldPos.x / 1000) * DIST_FACTOR + 0.5;
-        const py = (worldPos.y / 1000) * DIST_FACTOR + Y_OFFSET;
-        const pz = -(worldPos.z / 1000) * DIST_FACTOR;
+        const px = (worldPos.x) * DIST_FACTOR;
+        const py = (worldPos.y) * DIST_FACTOR + Y_OFFSET;
+        const pz = -(worldPos.z) * DIST_FACTOR;
+
+        console.log(`[cube-follow] ${this.marker.id} worldPos:`, 
+        worldPos.toArray().map(v=>v.toFixed(3)),
+        `camPos:`, camPos.toArray().map(v=>v.toFixed(3)),
+        `relPos:`, relPos.toArray().map(v=>v.toFixed(3)));
+
+        console.log(`[cube-follow] ${this.marker.id} px,py,pz:`, 
+        [px,py,pz].map(v=>v.toFixed(3)));
 
         // 3) send into Unity
         u.SendMessage(
