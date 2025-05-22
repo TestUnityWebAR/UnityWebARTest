@@ -1,6 +1,6 @@
 {
-  "urls": [
-    "Descriptors/amongus/amongus",
-    "Descriptors/kirby/kirby"
-  ]
+    "urls": [
+        "StreamingAssets/Descriptors/amongus/amongus",
+        "StreamingAssets/Descriptors/kirby/kirby"
+    ]
 }
