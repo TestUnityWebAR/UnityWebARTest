@@ -26,15 +26,15 @@ jobs:
       # 3) Copy manifest + descriptors into the site
       - name: Copy marker assets
         run: |
-          cp unity/Assets/StreamingAssets/markerManifest.json public/markerManifest.json
-          rm -rf public/Descriptors
-          cp -R unity/Assets/StreamingAssets/Descriptors public/Descriptors
+          cp unity/Assets/StreamingAssets/markerManifest.json docs/markerManifest.json
+          rm -rf docs/Descriptors
+          cp -R unity/Assets/StreamingAssets/Descriptors docs/Descriptors
 
       # 4) Commit & push back to website
       - name: Commit & Push
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/markerManifest.json public/Descriptors
+          git add docs/markerManifest.json docs/Descriptors
           git commit -m "🔄 sync AR markers from Unity" || echo "No changes"
           git push
