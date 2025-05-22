@@ -128,39 +128,37 @@
       renderer="logarithmicDepthBuffer: true; alpha: true"
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
     >
-    <!-- 1st Marker-->
-    <a-nft
-      id="marker" 
-      type="nft"
-      url="UnityWebARTest/Descriptors/test2"
-      smooth="true" 
-      smoothCount="30"
-      smoothTolerance="0.01" 
-      smoothThreshold="5"
-      detectMinSimilarity="0.3"
-      scale="2 2 2"
-      cube-follow
-    >
-    <a-light type="ambient" intensity="1"></a-light>
-    </a-nft>
-
-    <!-- 2nd Marker-->
-    <a-nft
-      id="marker2" 
-      type="nft"
-      url="UnityWebARTest/Descriptors/test3"
-      smooth="true" 
-      smoothCount="30"
-      smoothTolerance="0.01" 
-      smoothThreshold="5"
-      detectMinSimilarity="0.3"
-      scale="2 2 2"
-      cube-follow
-    >
-    <a-light type="ambient" intensity="1"></a-light>
-    </a-nft>
     <a-entity camera></a-entity>
     </a-scene>
+
+    <!-- This is where they get the marker's ID, aka the images -->
+    <script>
+    fetch("markerManifest.json")
+      .then(r => r.json())
+      .then(data => {
+        const scene = document.querySelector("a-scene");
+        data.urls.forEach(url => {
+          const id = url.split("/").pop();
+          const nft = document.createElement("a-nft");
+          nft.setAttribute("id",id);
+          nft.setAttribute("type","nft");
+          nft.setAttribute("url",url);
+          nft.setAttribute("smooth","true");
+          nft.setAttribute("smoothCount","30");
+          nft.setAttribute("smoothTolerance","0.01");
+          nft.setAttribute("smoothThreshold","5");
+          nft.setAttribute("detectMinSimilarity","0.3");
+          nft.setAttribute("cube-follow","");    // your AR→Unity component
+          //Lighting
+          const light = document.createElement("a-light");
+          light.setAttribute("type","ambient");
+          light.setAttribute("intensity","1");
+          nft.appendChild(light);
+          scene.appendChild(nft);
+        });
+      })
+      .catch(console.error);
+    </script>
 
     <!-- === Unity Canvas & Loading UI === -->
     <div id="unity-container">
