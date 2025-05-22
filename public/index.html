@@ -136,8 +136,10 @@
     fetch("markerManifest.json")
       .then(r => r.json())
       .then(data => {
+        console.log("manifest.urls →", data.urls);
         const scene = document.querySelector("a-scene");
         data.urls.forEach(url => {
+          console.log("Creating NFT tag for:", url);
           const id = url.split("/").pop();
           const nft = document.createElement("a-nft");
           nft.setAttribute("id",id);
