@@ -77,12 +77,12 @@
         const relQuat = camQuat.clone().invert().multiply(worldQuat);
 
         // 2) convert: mm→m, flip Z once, then optionally stretch & lift
-        const DIST_FACTOR = 1.0;    // if you want farther, bump this >1
+        const DIST_FACTOR = 3.0;    // if you want farther, bump this >1
         const Y_OFFSET    = 0.05;   //  5cm up so the cube sits atop the plane
 
-        const px = (worldPos.x);// / 1000) * DIST_FACTOR + 0.5;
-        const py = (worldPos.y);// / 1000) * DIST_FACTOR + Y_OFFSET;
-        const pz = -(worldPos.z);// / 1000) * DIST_FACTOR;
+        const px = (worldPos.x / 1000) * DIST_FACTOR + 0.5;
+        const py = (worldPos.y / 1000) * DIST_FACTOR + Y_OFFSET;
+        const pz = -(worldPos.z / 1000) * DIST_FACTOR;
 
         // 3) send into Unity
         u.SendMessage(
