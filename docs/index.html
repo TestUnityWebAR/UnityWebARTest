@@ -133,7 +133,7 @@
 
     <!-- This is where they get the marker's ID, aka the images -->
     <script>
-      fetch("markerManifest.json")
+      fetch("StreamingAssets/markerManifest.json")
         .then(r => r.json())
         .then(data => {
           console.log("manifest.urls →", data.urls);
