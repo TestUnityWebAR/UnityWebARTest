@@ -75,11 +75,11 @@
         this.marker.object3D.getWorldPosition(worldPos);
 
         //grab orientation exactly as before
-        // const worldQuat = new THREE.Quaternion();
-        // this.marker.object3D.getWorldQuaternion(worldQuat);
-        // const camQuat   = new THREE.Quaternion();
-        // this.cam.object3D.getWorldQuaternion(camQuat);
-        // const relQuat   = camQuat.clone().invert().multiply(worldQuat);
+        const worldQuat = new THREE.Quaternion();
+        this.marker.object3D.getWorldQuaternion(worldQuat);
+        const camQuat   = new THREE.Quaternion();
+        this.cam.object3D.getWorldQuaternion(camQuat);
+        const relQuat   = camQuat.clone().invert().multiply(worldQuat);
 
         // //convert: mm→m, flip Z once, then optionally stretch & lift
         // const DIST_FACTOR = 3.0;    // This is where the cube will be placed, 
@@ -104,18 +104,15 @@
         // 4) send whichever you like into Unity
         const p = spawnPosByFactor;  
 
-        console.log(`[${this.marker.id}] worldPos:`, worldPos.toArray().map(v=>v.toFixed(3)));
-        console.log(`[${this.marker.id}] px,py,pz:`, [px,py,pz].map(v=>v.toFixed(3)));
-
         //send into Unity
         u.SendMessage(
           "CubeSpawner","UpdateTransformData",
           JSON.stringify({
             id: this.marker.id,
             position: { 
-              x: px, 
-              y: py, 
-              z: pz },
+              x: p.x, 
+              y: p.y, 
+              z: p.z },
             rotation: {
               x: relQuat.x,
               y: relQuat.y,
