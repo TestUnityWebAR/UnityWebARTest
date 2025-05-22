@@ -133,34 +133,44 @@
 
     <!-- This is where they get the marker's ID, aka the images -->
     <script>
-    fetch("markerManifest.json")
-      .then(r => r.json())
-      .then(data => {
-        console.log("manifest.urls →", data.urls);
-        const scene = document.querySelector("a-scene");
-        data.urls.forEach(url => {
-          console.log("Creating NFT tag for:", url);
-          const url = `/UnityWebARTest/${relUrl}`;
-          const id = relUrl.split("/").pop();
-          const nft = document.createElement("a-nft");
-          nft.setAttribute("id",id);
-          nft.setAttribute("type","nft");
-          nft.setAttribute("url",url);
-          nft.setAttribute("smooth","true");
-          nft.setAttribute("smoothCount","30");
-          nft.setAttribute("smoothTolerance","0.01");
-          nft.setAttribute("smoothThreshold","5");
-          nft.setAttribute("detectMinSimilarity","0.3");
-          nft.setAttribute("cube-follow","");    // your AR→Unity component
-          //Lighting
-          const light = document.createElement("a-light");
-          light.setAttribute("type","ambient");
-          light.setAttribute("intensity","1");
-          nft.appendChild(light);
-          scene.appendChild(nft);
-        });
-      })
-      .catch(console.error);
+      fetch("markerManifest.json")
+        .then(r => r.json())
+        .then(data => {
+          console.log("manifest.urls →", data.urls);
+          const scene = document.querySelector("a-scene");
+
+          data.urls.forEach(relUrl => {
+            console.log("Creating NFT tag for:", relUrl);
+
+            // If your manifest entries are already absolute:
+            //    e.g. "/UnityWebARTest/Descriptors/hiro/hiro"
+            // then just:
+            const url = relUrl;
+
+            //—but if they’re relative ("Descriptors/hiro/hiro"), do:
+            // const url = `/UnityWebARTest/${relUrl}`;
+
+            const id  = url.split("/").pop();
+            const nft = document.createElement("a-nft");
+            nft.setAttribute("id",   id);
+            nft.setAttribute("type", "nft");
+            nft.setAttribute("url",  url);
+            nft.setAttribute("smooth","true");
+            nft.setAttribute("smoothCount","30");
+            nft.setAttribute("smoothTolerance","0.01");
+            nft.setAttribute("smoothThreshold","5");
+            nft.setAttribute("detectMinSimilarity","0.3");
+            nft.setAttribute("cube-follow","");
+
+            const light = document.createElement("a-light");
+            light.setAttribute("type","ambient");
+            light.setAttribute("intensity","1");
+            nft.appendChild(light);
+
+            scene.appendChild(nft);
+          });
+        })
+        .catch(console.error);
     </script>
 
     <!-- === Unity Canvas & Loading UI === -->
