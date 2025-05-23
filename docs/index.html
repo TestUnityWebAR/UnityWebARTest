@@ -47,7 +47,9 @@
 
         this.marker.addEventListener('markerFound', () => {
           if (!this.spawned && window.unityInstance?.SendMessage) {
-            window.unityInstance.SendMessage('CubeSpawner','SpawnCube', this.marker.id);
+            // use the placeholder id:
+            const ph = `${this.marker.id}-ph`
+            window.unityInstance.SendMessage('CubeSpawner','SpawnCube', ph);
             this.spawned = true;
             this.lostCount = 0;
           }
@@ -178,6 +180,12 @@
           nft.setAttribute("detectMinSimilarity","0.3");
           nft.setAttribute("cube-follow","");
           nft.setAttribute("scale","0.2 0.2 0.2");
+
+          // now create the placeholder at (0,0,0) local to the marker:
+          const placeholder = document.createElement('a-entity');
+          placeholder.setAttribute('id', `${id}-ph`);      // e.g. "amongus-ph"
+          placeholder.setAttribute('position','0 0 0');
+          nft.appendChild(placeholder);
 
           const light = document.createElement("a-light");
           light.setAttribute("type","ambient");
