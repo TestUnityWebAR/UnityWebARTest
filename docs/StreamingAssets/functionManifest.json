@@ -1,0 +1,22 @@
+{
+    "functions": [
+        {
+            "objectName": "CubeSpawner",
+            "methodName": "SpawnCube",
+            "jsName": "spawnCube",
+            "argCount": 1
+        },
+        {
+            "objectName": "CubeSpawner",
+            "methodName": "UpdateTransformData",
+            "jsName": "updateTransformData",
+            "argCount": 1
+        },
+        {
+            "objectName": "CubeSpawner",
+            "methodName": "DestroyCube",
+            "jsName": "destroyCube",
+            "argCount": 1
+        }
+    ]
+}
