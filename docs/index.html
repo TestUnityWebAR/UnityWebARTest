@@ -144,7 +144,7 @@
           }
 
           //Might cause the cube to disappear for some reason
-          const s       = this.el.getAttribute('scale');
+          const s       = this.el.object3D.scale;
           const xOffset = s.x / 2;    // shift right by half‐width
           const yOffset = s.y / 2;    // lift by half‐height
 

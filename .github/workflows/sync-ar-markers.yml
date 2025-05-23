@@ -1,4 +1,4 @@
-name: 🔄 Sync AR Markers
+name: 🔄 Sync AR Markers & Functions
 
 on:
   workflow_dispatch:
@@ -40,5 +40,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/StreamingAssets/markerManifest.json docs/StreamingAssets/Descriptors
           git add docs/StreamingAssets/functionManifest.json docs/StreamingAssets/Descriptors
-          git commit -m "🔄 sync AR markers from Unity" || echo "No changes"
+          git commit -m "🔄 sync AR markers & functions from Unity" || echo "No changes"
           git push
