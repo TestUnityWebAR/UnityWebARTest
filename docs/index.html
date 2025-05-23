@@ -28,98 +28,98 @@
     </style>
 
     <script>
-    AFRAME.registerComponent("cube-follow", { //Its like creating a function
-      init() { //initialising
-        //console.log("[cube-follow] init on", this.el); //Checking if the cube is indeed initialising
-        this.spawned   = false; //bool set to false
-        this.lostCount = 0; //tracking the number of times it has lost track
-        this.marker    = this.el; //ref to the marker
-        this.cam       = this.el.sceneEl.querySelector("[camera]"); //ref to the camera
-        
-        // Smoothing state:
+    AFRAME.registerComponent('cube-follow', {
+      schema: {
+        distanceFactor: { type: 'number', default: 2.0 },
+        yOffset:        { type: 'number', default: 0.1 },
+        smoothFactor:   { type: 'number', default: 0.2 }
+      },
+
+      init() {
+        this.spawned     = false;
+        this.lostCount   = 0;
+        this.marker      = this.el;
+        this.cameraEl    = this.el.sceneEl.querySelector('[camera]');
+
+        // smoothing buffers
         this.smoothedPos  = new THREE.Vector3();
         this.smoothedQuat = new THREE.Quaternion();
         this.hasSmoothed  = false;
 
-        this.el.addEventListener("markerFound", () => {
-          this.lostCount = 0;
-          const u = window.unityInstance;
-          if (!u?.SendMessage) return;
-          //u.SendMessage("CubeSpawner","SetTracking",1);
-          u.SendMessage("CubeSpawner","SpawnCube", this.marker.id); //(ScriptName, FunctionName, Function's parameter)
-          this.spawned = true;
+        this.marker.addEventListener('markerFound', () => {
+          if (!this.spawned && window.unityInstance?.SendMessage) {
+            window.unityInstance.SendMessage('CubeSpawner', 'SpawnCube', this.marker.id);
+            this.spawned = true;
+            this.lostCount = 0;
+          }
         });
 
-        this.el.addEventListener("markerLost", () => {
-          const u = window.unityInstance;
-          u.SendMessage("CubeSpawner","DestroyCube", this.marker.id);
-          this.spawned = false;
+        this.marker.addEventListener('markerLost', () => {
+          if (this.spawned && window.unityInstance?.SendMessage) {
+            window.unityInstance.SendMessage('CubeSpawner', 'DestroyCube', this.marker.id);
+            this.spawned = false;
+          }
         });
       },
 
       tick() {
         const u = window.unityInstance;
-        if (!u?.SendMessage || !this.spawned) return;
+        if (!this.spawned || !u?.SendMessage) return;
 
         // debounce small blips
-        const vis = this.marker.object3D.visible;
-        if (!vis) {
-          if (++this.lostCount > 5 && this.spawned) {
-            console.log("[cube-follow] confirmed lost → destroying");
-            u.SendMessage("CubeSpawner","DestroyCube", this.marker.id);
-            //u.SendMessage("CubeSpawner","SetTracking",0);
-            this.spawned   = false;
-            this.lostCount = 0;
-          }
-          return;
+        const visible = this.marker.object3D.visible;
+        if (!visible && ++this.lostCount > 5) {
+          u.SendMessage('CubeSpawner', 'DestroyCube', this.marker.id);
+          this.spawned = false;
+          this.lostCount = 0;
         }
+        if (!visible) return;
         this.lostCount = 0;
 
-        // 1) get the raw AR.js pose (in millimetres)
-        const worldPos = new THREE.Vector3();
+        // 1) get world‐space marker & camera transforms
+        const worldPos  = new THREE.Vector3();
         const worldQuat = new THREE.Quaternion();
         this.marker.object3D.getWorldPosition(worldPos);
         this.marker.object3D.getWorldQuaternion(worldQuat);
 
-        // 2) camera’s world‐space orientation
-        const camQuat = new THREE.Quaternion();
-        this.cam.object3D.getWorldQuaternion(camQuat);
+        const camPos   = new THREE.Vector3();
+        const camQuat  = new THREE.Quaternion();
+        this.cameraEl.object3D.getWorldPosition(camPos);
+        this.cameraEl.object3D.getWorldQuaternion(camQuat);
 
-        // 3) compute rotation **relative to the camera**
-        const relQuat = camQuat.clone().invert().multiply(worldQuat);
+        // 2) compute marker pose *relative* to camera
+        const relPosMm  = worldPos.sub(camPos);                // mm
+        const relQuat   = camQuat.clone().invert().multiply(worldQuat);
 
-        // 4) convert to metres
-        const rawPos  = worldPos.clone().divideScalar(1000);
-        const rawQuat = relQuat;
+        // 3) convert to metres
+        const rawPos    = relPosMm.divideScalar(1000);
+        const rawQuat   = relQuat;
 
-        const alpha = 0.2;  // 0.0=super-smooth but laggy, 1.0=no smoothing
+        // 4) low-pass filter
+        const α = this.data.smoothFactor;
         if (!this.hasSmoothed) {
           this.smoothedPos.copy(rawPos);
           this.smoothedQuat.copy(rawQuat);
           this.hasSmoothed = true;
         } else {
-          this.smoothedPos.lerp(rawPos, alpha);
-          this.smoothedQuat.slerp(rawQuat, alpha);
+          this.smoothedPos.lerp(rawPos, α);
+          this.smoothedQuat.slerp(rawQuat, α);
         }
 
-        const DIST_FACTOR = 2.0;
-        const Y_OFFSET    = 0.1;
-        const finalPos    = this.smoothedPos;
-        const finalQuat   = this.smoothedQuat;
-        const px = finalPos.x * DIST_FACTOR;
-        const py = finalPos.y * DIST_FACTOR + Y_OFFSET;
-        const pz = -finalPos.z * DIST_FACTOR;
+        // 5) scale & lift
+        const df = this.data.distanceFactor;
+        const yf = this.data.yOffset;
+        const p  = this.smoothedPos;
+        const px = p.x * df;
+        const py = p.y * df + yf;
+        const pz = -p.z * df;
 
-        // console.log(`[${this.marker.id}] spawn (m):`, [px,py,pz].map(n=>n.toFixed(3)));
-        //send into Unity
+        // 6) send into Unity
         u.SendMessage(
-          "CubeSpawner","UpdateTransformData",
+          'CubeSpawner', 'UpdateTransformData',
           JSON.stringify({
-            id: this.marker.id,
-            position: { 
-              x: px, 
-              y: py, 
-              z: pz },
+            id:       this.marker.id,
+            position: { x: px, y: py, z: pz },
             rotation: {
               x: this.smoothedQuat.x,
               y: this.smoothedQuat.y,
@@ -130,7 +130,7 @@
         );
       }
     });
-  </script>
+    </script>
   </head>
 
   <body>
