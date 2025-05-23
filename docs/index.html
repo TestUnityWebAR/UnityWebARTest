@@ -143,9 +143,13 @@
             this.smoothedQuat.slerp(relQuat, a);
           }
 
+          //Might cause the cube to disappear for some reason
+          const markerScaleM = this.el.getAttribute('scale').x;
+          const yOffset      = markerScaleM / 2;       // half the real‐world height
+
           // scale & lift
-          const df = this.data.distanceFactor, yf = this.data.yOffset, p = this.smoothedPos;
-          const px = p.x * df, py = p.y * df + yf, pz = -p.z * df;
+          const df = this.data.distanceFactor, /*yf = this.data.yOffset,*/ p = this.smoothedPos;
+          const px = p.x * df, py = p.y * df + yOffset, pz = -p.z * df;
 
           // send update to Unity
           u.SendMessage(
