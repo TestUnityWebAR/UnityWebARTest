@@ -147,127 +147,152 @@
     </a-scene>
 
     <!-- This is where they get the marker's ID, aka the images -->
-    <script>
-    Promise.all([
-      fetch("StreamingAssets/functionManifest.json").then(r => r.json()),
-      fetch("StreamingAssets/markerManifest.json"  ).then(r => r.json())
-      ])
-      .then(([fnMan, mkMan]) => {
-        // 1) Generate JS stubs for every exposed C# method
-        fnMan.functions.forEach(f => {
-          window[f.jsName] = (...args) => {
-            const payload = f.argCount === 1
-              ? JSON.stringify(args[0])
-              : JSON.stringify(args);
-            window.unityInstance.SendMessage(
-              f.objectName, f.methodName, payload
-            );
-          };
-        });
-
-        // 2) Inject your a-nft tags exactly as before
-        const scene = document.querySelector("a-scene");
-        mkMan.urls.forEach(relUrl => {
-          const url = relUrl;            // e.g. "Descriptors/hiro/hiro"
-          const id  = url.split("/").pop();
-
-          const nft = document.createElement("a-nft");
-          nft.setAttribute("id",   id);
-          nft.setAttribute("type", "nft");
-          nft.setAttribute("url",  url);
-          nft.setAttribute("smooth","true");
-          nft.setAttribute("smoothCount","30");
-          nft.setAttribute("smoothTolerance","0.01");
-          nft.setAttribute("smoothThreshold","5");
-          nft.setAttribute("detectMinSimilarity","0.3");
-          nft.setAttribute("cube-follow","");
-          nft.setAttribute("scale","0.2 0.2 0.2");
-
-          // now create the placeholder at (0,0,0) local to the marker:
-          const placeholder = document.createElement('a-entity');
-          placeholder.setAttribute('id', `${id}-ph`);      // e.g. "amongus-ph"
-          placeholder.setAttribute('position','0 0 0');
-          nft.appendChild(placeholder);
-
-          const light = document.createElement("a-light");
-          light.setAttribute("type","ambient");
-          light.setAttribute("intensity","1");
-          nft.appendChild(light);
-
-          scene.appendChild(nft);
-        });
-      })
-      .catch(console.error);
-  </script>
-
-
-    <!-- === Unity Canvas & Loading UI === -->
-    <div id="unity-container">
-      <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"></div>
-      <div id="unity-footer">
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">UnityWebARProject</div>
-      </div>
-    </div>
-
-    <!-- === Unity Loader Script === -->
-    <script>
-      function unityShowBanner(msg, type) {
-        const b = document.querySelector("#unity-warning"),
-              d = document.createElement("div");
-        d.innerHTML = msg;
-        d.style = type==="error"
-          ? "background:red;padding:10px;"
-          : type==="warning"
-          ? "background:yellow;padding:10px;" : "";
-        b.appendChild(d);
-        if(type==="warning") setTimeout(()=>b.removeChild(d),5000);
-      }
-
-      const canvas   = document.getElementById("unity-canvas");
-      const loaderUrl= "Build/docs.loader.js";
-      const config   = {
-        dataUrl:    "Build/docs.data",
-        frameworkUrl:"Build/docs.framework.js",
-        codeUrl:    "Build/docs.wasm",
-        streamingAssetsUrl:"StreamingAssets",
-        showBanner: unityShowBanner,
-        webglContextAttributes:{alpha:true,premultipliedAlpha:false}
+<script>
+  // 1) Load both manifests and inject your <a-nft> elements
+  Promise.all([
+    fetch("StreamingAssets/functionManifest.json").then(r => r.json()),
+    fetch("StreamingAssets/markerManifest.json").then(r => r.json())
+  ])
+  .then(([fnMan, mkMan]) => {
+    // Wire up Unity→JS stubs (unchanged)
+    fnMan.functions.forEach(f => {
+      window[f.jsName] = (...args) => {
+        const payload = f.argCount === 1
+          ? JSON.stringify(args[0])
+          : JSON.stringify(args);
+        window.unityInstance.SendMessage(f.objectName, f.methodName, payload);
       };
+    });
 
-      console.log("Injecting Unity loader:", loaderUrl);
-      const unityLoader = document.createElement("script");
-      unityLoader.src = loaderUrl;
-      unityLoader.onload = () => {
-        console.log("Unity loader script loaded.");
-        if (!window.unityInstance) {
-          createUnityInstance(canvas, config, p => {
-            document.querySelector("#unity-progress-bar-full")
-                    .style.width = (100*p).toFixed(1) + "%";
-          })
-          .then(inst => {
-            console.log("Unity instance created");
-            window.unityInstance = inst;
-            document.querySelector("#unity-loading-bar").style.display = "none";
-          })
-          .catch(err => {
-            console.error("Unity load failed:", err);
-            unityShowBanner("Unity failed to load","error");
-          });
+    // Inject each NFT marker into the A-Frame scene
+    const scene = document.querySelector("a-scene");
+    mkMan.urls.forEach(url => {
+      const id  = url.split("/").pop();
+      const nft = document.createElement("a-nft");
+      nft.setAttribute("id",                  id);
+      nft.setAttribute("type",                "nft");
+      nft.setAttribute("url",                 url);
+      nft.setAttribute("smooth",              "true");
+      nft.setAttribute("smoothCount",         "30");
+      nft.setAttribute("smoothTolerance",     "0.01");
+      nft.setAttribute("smoothThreshold",     "5");
+      nft.setAttribute("detectMinSimilarity", "0.3");
+      nft.setAttribute("scale",               "0.2 0.2 0.2");
+      nft.setAttribute("cube-follow",         "");
+
+      const light = document.createElement("a-light");
+      light.setAttribute("type",      "ambient");
+      light.setAttribute("intensity", "1");
+      nft.appendChild(light);
+
+      scene.appendChild(nft);
+    });
+  })
+  .catch(console.error);
+
+    // 2) Define cube-follow: always use marker.id as the Unity key
+    AFRAME.registerComponent('cube-follow', {
+      schema: {
+        distanceFactor: { type: 'number', default: 1.5 },
+        yOffset:        { type: 'number', default: 0.05 },
+        smoothFactor:   { type: 'number', default: 0.2 }
+      },
+
+      init() {
+        this.spawned    = false;
+        this.lostCount  = 0;
+        this.marker     = this.el;
+        this.cameraEl   = this.el.sceneEl.querySelector('[camera]');
+
+        this.smoothedPos  = new THREE.Vector3();
+        this.smoothedQuat = new THREE.Quaternion();
+        this.hasSmoothed  = false;
+
+        // On detection, spawn under Unity GameObject named exactly marker.id
+        this.marker.addEventListener('markerFound', () => {
+          if (!this.spawned && window.unityInstance?.SendMessage) {
+            window.unityInstance.SendMessage('CubeSpawner','SpawnCube', this.marker.id);
+            this.spawned    = true;
+            this.lostCount  = 0;
+          }
+        });
+
+        // On loss, destroy that same Unity GameObject child
+        this.marker.addEventListener('markerLost', () => {
+          if (this.spawned && window.unityInstance?.SendMessage) {
+            window.unityInstance.SendMessage('CubeSpawner','DestroyCube', this.marker.id);
+            this.spawned = false;
+          }
+        });
+      },
+
+      tick() {
+        const u = window.unityInstance;
+        if (!this.spawned || !u?.SendMessage) return;
+
+        // Debounce quick blips
+        if (!this.marker.object3D.visible && ++this.lostCount > 5) {
+          u.SendMessage('CubeSpawner','DestroyCube', this.marker.id);
+          this.spawned   = false;
+          this.lostCount = 0;
         }
-      };
-      unityLoader.onerror = e => {
-        console.error("Error loading Unity loader script:", e);
-        unityShowBanner("Could not load Unity loader.js","error");
-      };
-      document.body.appendChild(unityLoader);
-    </script>
+        if (!this.marker.object3D.visible) return;
+        this.lostCount = 0;
+
+        // 1) world‐space marker + camera
+        const worldPos  = new THREE.Vector3();
+        const worldQuat = new THREE.Quaternion();
+        this.marker.object3D.getWorldPosition(worldPos);
+        this.marker.object3D.getWorldQuaternion(worldQuat);
+
+        const camPos  = new THREE.Vector3();
+        const camQuat = new THREE.Quaternion();
+        this.cameraEl.object3D.getWorldPosition(camPos);
+        this.cameraEl.object3D.getWorldQuaternion(camQuat);
+
+        // 2) relative pose (mm)
+        const relPosMm = worldPos.sub(camPos);
+        const relQuat  = camQuat.clone().invert().multiply(worldQuat);
+
+        // 3) to metres
+        const rawPos  = relPosMm.divideScalar(1000);
+        const rawQuat = relQuat;
+
+        // 4) low‐pass filter
+        const α = this.data.smoothFactor;
+        if (!this.hasSmoothed) {
+          this.smoothedPos.copy(rawPos);
+          this.smoothedQuat.copy(rawQuat);
+          this.hasSmoothed = true;
+        } else {
+          this.smoothedPos.lerp(rawPos, α);
+          this.smoothedQuat.slerp(rawQuat, α);
+        }
+
+        // 5) scale & lift, still local to marker center
+        const df      = this.data.distanceFactor;
+        const yf      = this.data.yOffset;
+        const p       = this.smoothedPos;
+        const px      = p.x * df;
+        const py      = p.y * df + yf;
+        const pz      = -p.z * df;  // flip Z into scene
+
+        // 6) send into Unity using the same marker.id key
+        u.SendMessage(
+          'CubeSpawner','UpdateTransformData',
+          JSON.stringify({
+            id:       this.marker.id,
+            position: { x:px, y:py, z:pz },
+            rotation: {
+              x: this.smoothedQuat.x,
+              y: this.smoothedQuat.y,
+              z: -this.smoothedQuat.z,
+              w: this.smoothedQuat.w
+            }
+          })
+        );
+      }
+    });
+  </script>
   </body>
 </html>
