@@ -94,7 +94,7 @@
         const relQuat = camQuat.clone().invert().multiply(worldQuat);
 
         // 4) convert to metres
-        const METERS  = worldPos.clone().divideScalar(1000);
+        const rawPos  = worldPos.clone().divideScalar(1000);
         const rawQuat = relQuat;
 
         const alpha = 0.5;  // 0.0=super-smooth but laggy, 1.0=no smoothing
@@ -109,9 +109,9 @@
 
         const DIST_FACTOR = 1.5;    // 1.0→exactly at the real marker distance
         const Y_OFFSET    = 0.05;   // lift it 5 cm above the plane
-        const px = METERS.x * DIST_FACTOR;
-        const py = METERS.y * DIST_FACTOR + Y_OFFSET;
-        const pz = -METERS.z * DIST_FACTOR;  // flip Z so “forward” is into the scene
+        const px = rawPos.x * DIST_FACTOR;
+        const py = rawPos.y * DIST_FACTOR + Y_OFFSET;
+        const pz = -rawPos.z * DIST_FACTOR;  // flip Z so “forward” is into the scene
 
         // debug it
         console.log(
