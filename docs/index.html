@@ -29,23 +29,52 @@
 
     <script>
     AFRAME.registerComponent('cube-follow', {
-      /* … your schema & init() stay the same … */
+      schema: {
+        distanceFactor: { type: 'number', default: 2.0 },
+        yOffset:        { type: 'number', default: 0.05 },
+        smoothFactor:   { type: 'number', default: 0.2 }
+      },
+
+      init() {
+        this.spawned     = false;
+        this.lostCount   = 0;
+        this.marker      = this.el;
+        this.cameraEl    = this.el.sceneEl.querySelector('[camera]');
+
+        this.smoothedPos  = new THREE.Vector3();
+        this.smoothedQuat = new THREE.Quaternion();
+        this.hasSmoothed  = false;
+
+        this.marker.addEventListener('markerFound', () => {
+          if (!this.spawned && window.unityInstance?.SendMessage) {
+            window.unityInstance.SendMessage('CubeSpawner','SpawnCube', this.marker.id);
+            this.spawned = true;
+            this.lostCount = 0;
+          }
+        });
+
+        this.marker.addEventListener('markerLost', () => {
+          if (this.spawned && window.unityInstance?.SendMessage) {
+            window.unityInstance.SendMessage('CubeSpawner','DestroyCube', this.marker.id);
+            this.spawned = false;
+          }
+        });
+      },
 
       tick() {
         const u = window.unityInstance;
         if (!this.spawned || !u?.SendMessage) return;
 
-        // 1) debounce
-        const visible = this.marker.object3D.visible;
-        if (!visible && ++this.lostCount > 5) {
+        // debounce small blips
+        if (!this.marker.object3D.visible && ++this.lostCount > 5) {
           u.SendMessage('CubeSpawner','DestroyCube', this.marker.id);
           this.spawned = false;
           this.lostCount = 0;
         }
-        if (!visible) return;
+        if (!this.marker.object3D.visible) return;
         this.lostCount = 0;
 
-        // 2) get world-space transforms
+        // 1) get marker & camera world-space transforms
         const worldPos  = new THREE.Vector3();
         const worldQuat = new THREE.Quaternion();
         this.marker.object3D.getWorldPosition(worldPos);
@@ -56,21 +85,15 @@
         this.cameraEl.object3D.getWorldPosition(camPos);
         this.cameraEl.object3D.getWorldQuaternion(camQuat);
 
-        // 3) shift from marker-corner to marker-center in world-space
-        const markerSizeM      = this.el.getAttribute('scale').x;      // metres
-        const halfMarkerLocal  = new THREE.Vector3(markerSizeM/2 * 1000, 0, 0);  
-        const halfMarkerWorld  = halfMarkerLocal.clone();
-        this.marker.object3D.localToWorld(halfMarkerWorld);
+        // 2) compute relative pose in mm
+        const relPosMm = worldPos.sub(camPos);
+        const relQuat  = camQuat.clone().invert().multiply(worldQuat);
 
-        // 4) compute camera-relative pose (still in mm)
-        const relPosMm  = halfMarkerWorld.sub(camPos);
-        const relQuat   = camQuat.clone().invert().multiply(worldQuat);
-
-        // 5) convert to metres
+        // 3) convert to metres
         const rawPos  = relPosMm.divideScalar(1000);
         const rawQuat = relQuat;
 
-        // 6) smooth
+        // 4) low-pass filter
         const α = this.data.smoothFactor;
         if (!this.hasSmoothed) {
           this.smoothedPos.copy(rawPos);
@@ -81,20 +104,20 @@
           this.smoothedQuat.slerp(rawQuat, α);
         }
 
-        // 7) scale, lift, and send to Unity
+        // 5) apply scale & lift
         const df = this.data.distanceFactor;
         const yf = this.data.yOffset;
         const p  = this.smoothedPos;
-
         const px = p.x * df;
         const py = p.y * df + yf;
         const pz = -p.z * df;
 
+        // 6) send into Unity
         u.SendMessage(
           'CubeSpawner','UpdateTransformData',
           JSON.stringify({
             id:       this.marker.id,
-            position: { x: px,  y: py,  z: pz  },
+            position: { x: px, y: py, z: pz },
             rotation: {
               x: this.smoothedQuat.x,
               y: this.smoothedQuat.y,
