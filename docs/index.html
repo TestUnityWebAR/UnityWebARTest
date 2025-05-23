@@ -110,7 +110,7 @@
         const df = this.data.distanceFactor;
         const yf = this.data.yOffset;
         const p  = this.smoothedPos;
-        const px = -p.x * df - xOffset;
+        const px = -p.x * df + xOffset;
         const py = p.y * df + yf;
         const pz = -p.z * df;
 
