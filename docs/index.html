@@ -55,7 +55,7 @@
         nft.setAttribute("smoothTolerance",     "0.01");
         nft.setAttribute("smoothThreshold",     "5");
         nft.setAttribute("detectMinSimilarity", "0.3");
-        nft.setAttribute("scale",               "0.2 0.2 0.2");
+        nft.setAttribute("scale",               "0.5 0.5 0.5");
         nft.setAttribute("cube-follow",         "");
 
         // placeholder for Unity parenting
@@ -143,17 +143,24 @@
             this.smoothedQuat.slerp(relQuat, a);
           }
 
-          //Might cause the cube to disappear for some reason
-          const s       = this.el.object3D.scale;
-          //const xOffset = s.x / 2;    // shift right by half‐width
-          const rawHalfx = s.x / 2;
-          const rawHalfy = s.y / 2;    // lift by half‐height
+          // read the *physical* marker size (in metres) from the A-Frame scale
+          const markerSize = this.el.getAttribute('scale');  // { x: 0.5, y: 0.5, z: 0.5 }
+          const halfW = markerSize.x / 2;   // 0.25 m
+          const halfH = markerSize.y / 2;   // 0.25 m
 
-          // scale & lift
-          const df = this.data.distanceFactor, /*yf = this.data.yOffset,*/ p = this.smoothedPos;
-          const xOffset = rawHalfx/df;
-          const yOffset = rawHalfy/df;
-          const px = (p.x * df) + xOffset, py = (p.y * df) + yOffset, pz = -p.z * df;
+          // now apply your distanceFactor and these offsets:
+          const df = this.data.distanceFactor;   // e.g. 2.0
+          const raw = this.smoothedPos;          // already in metres
+
+          // first *scale* the raw AR.js pos outward
+          const sx = raw.x * df;
+          const sy = raw.y * df;
+          const sz = raw.z * df;
+
+          // then add your centering offsets:
+          const px = sx + halfW;
+          const py = sy + halfH + this.data.yOffset;
+          const pz = -sz;
 
           // send update to Unity
           u.SendMessage(
