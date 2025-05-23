@@ -77,7 +77,7 @@
       AFRAME.registerComponent('cube-follow', {
         schema: {
           distanceFactor: { type: 'number', default: 1.5 },
-          yOffset:        { type: 'number', default: 0.05 },
+          yOffset:        { type: 'number', default: 0.1 },
           smoothFactor:   { type: 'number', default: 0.2 }
         },
 
@@ -133,14 +133,14 @@
           const rawPos   = relPosMm.divideScalar(1000);
 
           // smoothing
-          const α = this.data.smoothFactor;
+          const a = this.data.smoothFactor;
           if (!this.hasSmoothed) {
             this.smoothedPos.copy(rawPos);
             this.smoothedQuat.copy(relQuat);
             this.hasSmoothed = true;
           } else {
-            this.smoothedPos.lerp(rawPos, α);
-            this.smoothedQuat.slerp(relQuat, α);
+            this.smoothedPos.lerp(rawPos, a);
+            this.smoothedQuat.slerp(relQuat, a);
           }
 
           // scale & lift
