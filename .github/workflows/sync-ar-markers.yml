@@ -39,5 +39,6 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/StreamingAssets/markerManifest.json docs/StreamingAssets/Descriptors
+          git add docs/StreamingAssets/functionManifest.json docs/StreamingAssets/Descriptors
           git commit -m "🔄 sync AR markers from Unity" || echo "No changes"
           git push
