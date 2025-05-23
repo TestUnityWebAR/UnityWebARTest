@@ -29,9 +29,9 @@ jobs:
           cp unity/Assets/StreamingAssets/markerManifest.json docs/StreamingAssets/markerManifest.json
           rm -rf docs/StreamingAssets/Descriptors
           cp -R unity/Assets/StreamingAssets/Descriptors docs/StreamingAssets/Descriptors
-      - name: Copy functions
-        run: |
-          cp unity/Assets/StreamingAssets/functionManifest.json docs/StreamingAssets/functionManifest.json
+      # - name: Copy functions
+      #   run: |
+      #     cp unity/Assets/StreamingAssets/functionManifest.json docs/StreamingAssets/functionManifest.json
 
 
 
