@@ -35,6 +35,11 @@
         this.lostCount = 0; //tracking the number of times it has lost track
         this.marker    = this.el; //ref to the marker
         this.cam       = this.el.sceneEl.querySelector("[camera]"); //ref to the camera
+        
+        // Smoothing state:
+        this.smoothedPos  = new THREE.Vector3();
+        this.smoothedQuat = new THREE.Quaternion();
+        this.hasSmoothed  = false;
 
         this.el.addEventListener("markerFound", () => {
           this.lostCount = 0;
@@ -59,7 +64,7 @@
         // debounce small blips
         const vis = this.marker.object3D.visible;
         if (!vis) {
-          if (++this.lostCount > 5) {
+          if (++this.lostCount > 5 && this.spawned) {
             console.log("[cube-follow] confirmed lost → destroying");
             u.SendMessage("CubeSpawner","DestroyCube", this.marker.id);
             //u.SendMessage("CubeSpawner","SetTracking",0);
@@ -69,6 +74,11 @@
           return;
         }
         this.lostCount = 0;
+
+        if (!this.spawned) {
+        u.SendMessage("CubeSpawner","SpawnCube", this.marker.id);
+        this.spawned = true;
+        }
 
         // 1) get the raw AR.js pose (in millimetres)
         const worldPos = new THREE.Vector3();
@@ -85,8 +95,18 @@
 
         // 4) convert to metres
         const METERS  = worldPos.clone().divideScalar(1000);
+        const rawQuat = relQuat;
 
-        // 3) optionally push it out further (or closer)
+        const alpha = 0.5;  // 0.0=super-smooth but laggy, 1.0=no smoothing
+        if (!this.hasSmoothed) {
+          this.smoothedPos.copy(rawPos);
+          this.smoothedQuat.copy(rawQuat);
+          this.hasSmoothed = true;
+        } else {
+          this.smoothedPos.lerp(rawPos, alpha);
+          this.smoothedQuat.slerp(rawQuat, alpha);
+        }
+
         const DIST_FACTOR = 1.5;    // 1.0→exactly at the real marker distance
         const Y_OFFSET    = 0.05;   // lift it 5 cm above the plane
         const px = METERS.x * DIST_FACTOR;
