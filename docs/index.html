@@ -75,11 +75,6 @@
         }
         this.lostCount = 0;
 
-        if (!this.spawned) {
-        u.SendMessage("CubeSpawner","SpawnCube", this.marker.id);
-        this.spawned = true;
-        }
-
         // 1) get the raw AR.js pose (in millimetres)
         const worldPos = new THREE.Vector3();
         const worldQuat = new THREE.Quaternion();
@@ -97,7 +92,7 @@
         const rawPos  = worldPos.clone().divideScalar(1000);
         const rawQuat = relQuat;
 
-        const alpha = 0.5;  // 0.0=super-smooth but laggy, 1.0=no smoothing
+        const alpha = 0.2;  // 0.0=super-smooth but laggy, 1.0=no smoothing
         if (!this.hasSmoothed) {
           this.smoothedPos.copy(rawPos);
           this.smoothedQuat.copy(rawQuat);
@@ -107,18 +102,15 @@
           this.smoothedQuat.slerp(rawQuat, alpha);
         }
 
-        const DIST_FACTOR = 1.5;    // 1.0→exactly at the real marker distance
-        const Y_OFFSET    = 0.05;   // lift it 5 cm above the plane
-        const px = rawPos.x * DIST_FACTOR;
-        const py = rawPos.y * DIST_FACTOR + Y_OFFSET;
-        const pz = -rawPos.z * DIST_FACTOR;  // flip Z so “forward” is into the scene
+        const DIST_FACTOR = 2.0;
+        const Y_OFFSET    = 0.1;
+        const finalPos    = this.smoothedPos;
+        const finalQuat   = this.smoothedQuat;
+        const px = finalPos.x * DIST_FACTOR;
+        const py = finalPos.y * DIST_FACTOR + Y_OFFSET;
+        const pz = -finalPos.z * DIST_FACTOR;
 
-        // debug it
-        console.log(
-          `[${this.marker.id}] worldPos (mm):`, worldPos.toArray().map(n=>n.toFixed(1)),
-          `→ spawn (m):`, [px,py,pz].map(n=>n.toFixed(3))
-        );
-
+        // console.log(`[${this.marker.id}] spawn (m):`, [px,py,pz].map(n=>n.toFixed(3)));
         //send into Unity
         u.SendMessage(
           "CubeSpawner","UpdateTransformData",
@@ -129,10 +121,10 @@
               y: py, 
               z: pz },
             rotation: {
-              x: relQuat.x,
-              y: relQuat.y,
-              z: -relQuat.z,   // still single Z‐flip for handedness
-              w: relQuat.w
+              x: this.smoothedQuat.x,
+              y: this.smoothedQuat.y,
+              z: -this.smoothedQuat.z,
+              w: this.smoothedQuat.w
             }
           })
         );
@@ -186,6 +178,7 @@
           nft.setAttribute("smoothThreshold","5");
           nft.setAttribute("detectMinSimilarity","0.3");
           nft.setAttribute("cube-follow","");
+          nft.setAttribute("scale","0.2 0.2 0.2");
 
           const light = document.createElement("a-light");
           light.setAttribute("type","ambient");
