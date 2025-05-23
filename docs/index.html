@@ -105,14 +105,20 @@
           this.smoothedPos.lerp(rawPos, α);
           this.smoothedQuat.slerp(rawQuat, α);
         }
-        const halfMarker = this.el.getAttribute('scale').x / 2;  
+        const xOffset = 0.01;
         // 5) scale & lift
         const df = this.data.distanceFactor;
         const yf = this.data.yOffset;
         const p  = this.smoothedPos;
-        const px = -p.x * df + halfMarker;
+        const px = 0;
         const py = p.y * df + yf;
         const pz = -p.z * df;
+
+        console.log(
+          `→ [${this.marker.id}] px,py,pz =`,
+          px.toFixed(3), py.toFixed(3), pz.toFixed(3),
+          `(df=${df}, scale=${this.el.getAttribute('scale').x})`
+        );
 
         // 6) send into Unity
         u.SendMessage(
