@@ -1,7 +1,7 @@
 {
     "urls": [
-        "/UnityWebARTest/Descriptors/amongus/amongus",
-        "/UnityWebARTest/Descriptors/hiro/hiro",
-        "/UnityWebARTest/Descriptors/kirby/kirby"
+        "/UnityWebARTest/StreamingAssets/Descriptors/amongus/amongus",
+        "/UnityWebARTest/StreamingAssets/Descriptors/hiro/hiro",
+        "/UnityWebARTest/StreamingAssets/Descriptors/kirby/kirby"
     ]
 }
