@@ -76,7 +76,7 @@
         if (!visible) return;
         this.lostCount = 0;
 
-        // 1) get world‐space marker & camera transforms
+        // 1) world-space marker & camera transforms
         const worldPos  = new THREE.Vector3();
         const worldQuat = new THREE.Quaternion();
         this.marker.object3D.getWorldPosition(worldPos);
@@ -86,9 +86,15 @@
         const camQuat  = new THREE.Quaternion();
         this.cameraEl.object3D.getWorldPosition(camPos);
         this.cameraEl.object3D.getWorldQuaternion(camQuat);
+        
+        // markerSizeM is the real-world width in metres (your <a-nft> scale.x)
+        const markerSizeM  = this.el.getAttribute('scale').x;
+        const halfMarkerMm = (markerSizeM * 1000) / 2;
+        // add halfMarkerMm along local X (paper’s right direction)
+        worldPos.add(new THREE.Vector3(halfMarkerMm, 0, 0));
 
-        // 2) compute marker pose *relative* to camera
-        const relPosMm  = worldPos.sub(camPos);                // mm
+        // 2) compute marker pose relative to camera (still in mm)
+        const relPosMm  = worldPos.sub(camPos);
         const relQuat   = camQuat.clone().invert().multiply(worldQuat);
 
         // 3) convert to metres
@@ -105,7 +111,7 @@
           this.smoothedPos.lerp(rawPos, α);
           this.smoothedQuat.slerp(rawQuat, α);
         }
-        const xOffset = 0.01;
+
         // 5) scale & lift
         const df = this.data.distanceFactor;
         const yf = this.data.yOffset;
@@ -113,12 +119,6 @@
         const px = p.x * df;
         const py = p.y * df + yf;
         const pz = -p.z * df;
-
-        console.log(
-          `→ [${this.marker.id}] px,py,pz =`,
-          px.toFixed(3), py.toFixed(3), pz.toFixed(3),
-          `(df=${df}, scale=${this.el.getAttribute('scale').x})`
-        );
 
         // 6) send into Unity
         u.SendMessage(
