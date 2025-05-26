@@ -78,7 +78,7 @@
         schema: {
           distanceFactor: { type: 'number', default: 2.0 },
           yOffset:        { type: 'number', default: 0.25 },
-          smoothFactor:   { type: 'number', default: 0.2 }
+          smoothFactor:   { type: 'number', default: 1.0 }
         },
 
         init() {
@@ -184,6 +184,10 @@
       id="scene" embedded vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true; alpha: true"
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+      sourceWidth: 320;
+      sourceHeight: 240;
+      displayWidth: 320;
+      displayHeight: 240;
     >
       <a-entity camera></a-entity>
     </a-scene>
