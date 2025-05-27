@@ -1,261 +1,31 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html>
   <head>
-    <meta charset="utf-8" />
-    <title>Unity WebARProject</title>
-
-    <!-- A-Frame + AR.js for NFT tracking -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
-
     <style>
-      html, body {
-        margin: 0; padding: 0; overflow: hidden; background: transparent;
-      }
-      #scene {
-        position: absolute; top: 0; left: 0;
-        width: 100vw; height: 100vh;
-      }
-      #unity-container,
-      #unity-canvas,
-      canvas {
-        position: absolute; top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        background: transparent !important;
-        pointer-events: none;
-      }
+      body { margin: 0; overflow: hidden; }
     </style>
-
-    <script>
-    Promise.all([
-      fetch("StreamingAssets/functionManifest.json").then(r => r.json()),
-      fetch("StreamingAssets/markerManifest.json").then(r => r.json())
-    ])
-    .then(([fnMan, mkMan]) => {
-      // 1) Wire up Unity→JS stubs
-      fnMan.functions.forEach(f => {
-        window[f.jsName] = (...args) => {
-          const payload = f.argCount === 1
-            ? JSON.stringify(args[0])
-            : JSON.stringify(args);
-          window.unityInstance.SendMessage(f.objectName, f.methodName, payload);
-        };
-      });
-
-      // 2) Inject markers + placeholders
-      const scene = document.querySelector("a-scene");
-      mkMan.urls.forEach(url => {
-        const id  = url.split("/").pop();
-        const nft = document.createElement("a-nft");
-        nft.setAttribute("id",                  id);
-        nft.setAttribute("type",                "nft");
-        nft.setAttribute("url",                 url);
-        nft.setAttribute("smooth",              "true");
-        nft.setAttribute("smoothCount",         "30");
-        nft.setAttribute("smoothTolerance",     "0.01");
-        nft.setAttribute("smoothThreshold",     "5");
-        nft.setAttribute("detectMinSimilarity", "0.3");
-        nft.setAttribute("scale",               "0.5 0.5 0.5");
-        nft.setAttribute("cube-follow",         "");
-
-        // placeholder for Unity parenting
-        const ph = document.createElement("a-entity");
-        ph.setAttribute("id",       `${id}-ph`);
-        ph.setAttribute("position", "0 0 0");
-        nft.appendChild(ph);
-
-        // optional ambient light
-        const light = document.createElement("a-light");
-        light.setAttribute("type",      "ambient");
-        light.setAttribute("intensity", "1");
-        nft.appendChild(light);
-
-        scene.appendChild(nft);
-      });
-
-      // 3) Register cube-follow once
-      AFRAME.registerComponent('cube-follow', {
-        schema: {
-          distanceFactor: { type: 'number', default: 2.0 },
-          yOffset:        { type: 'number', default: 0.25 },
-          smoothFactor:   { type: 'number', default: 1.0 }
-        },
-
-        init() {
-          this.spawned    = false;
-          this.lostCount  = 0;
-          this.marker     = this.el;
-          this.cameraEl   = this.el.sceneEl.querySelector('[camera]');
-          this.smoothedPos  = new THREE.Vector3();
-          this.smoothedQuat = new THREE.Quaternion();
-          this.hasSmoothed  = false;
-          this.phId = () => `${this.marker.id}-ph`;
-
-          this.marker.addEventListener('markerFound', () => {
-            if (!this.spawned && window.unityInstance?.SendMessage) {
-              window.unityInstance.SendMessage('CubeSpawner','SpawnCube', this.phId());
-              this.spawned    = true;
-              this.lostCount  = 0;
-            }
-          });
-          this.marker.addEventListener('markerLost', () => {
-            if (this.spawned && window.unityInstance?.SendMessage) {
-              window.unityInstance.SendMessage('CubeSpawner','DestroyCube', this.phId());
-              this.spawned = false;
-            }
-          });
-        },
-
-        tick() {
-          const u = window.unityInstance;
-          if (!this.spawned || !u?.SendMessage) return;
-
-          if (!this.marker.object3D.visible && ++this.lostCount > 5) {
-            u.SendMessage('CubeSpawner','DestroyCube', this.phId());
-            this.spawned   = false;
-            this.lostCount = 0;
-          }
-          if (!this.marker.object3D.visible) return;
-          this.lostCount = 0;
-
-          // 1) read world‐space marker + camera
-          const worldPos  = new THREE.Vector3();
-          const worldQuat = new THREE.Quaternion();
-          this.marker.object3D.getWorldPosition(worldPos);
-          this.marker.object3D.getWorldQuaternion(worldQuat);
-
-          const camPos  = new THREE.Vector3();
-          const camQuat = new THREE.Quaternion();
-          this.cameraEl.object3D.getWorldPosition(camPos);
-          this.cameraEl.object3D.getWorldQuaternion(camQuat);
-
-          // 2) relative pose in mm
-          const relMm = worldPos.sub(camPos);
-          const relQ  = camQuat.clone().invert().multiply(worldQuat);
-
-          // 3) to metres
-          const rawPos = relMm.divideScalar(1000);
-
-          // 4) smoothing (unchanged)
-          const a = this.data.smoothFactor;
-          if (!this.hasSmoothed) {
-            this.smoothedPos.copy(rawPos);
-            this.smoothedQuat.copy(relQ);
-            this.hasSmoothed = true;
-          } else {
-            this.smoothedPos.lerp(rawPos, a);
-            this.smoothedQuat.slerp(relQ, a);
-          }
-
-          // 5) distance factor + vertical lift
-          const df = this.data.distanceFactor;
-          const yl = this.data.yOffset;
-          const p  = this.smoothedPos;
-
-          // NOTE: no half-width or half-height here!
-          const px = p.x * df;
-          const py = p.y * df + yl;
-          const pz = -p.z * df;
-
-          // 6) send to Unity
-          window.unityInstance.SendMessage(
-            'CubeSpawner', 'UpdateTransformData',
-            JSON.stringify({
-              id:       `${this.marker.id}-ph`,
-              position: { x: px, y: py, z: pz },
-              rotation: {
-                x: this.smoothedQuat.x,
-                y: this.smoothedQuat.y,
-                z: -this.smoothedQuat.z,
-                w: this.smoothedQuat.w
-              }
-            })
-          );
-        }
-      });
-    })
-    .catch(console.error);
-    </script>
   </head>
-
   <body>
-    <!-- AR.js Scene -->
     <a-scene
-      id="scene" embedded vr-mode-ui="enabled: false"
-      renderer="logarithmicDepthBuffer: true; alpha: true"
+      vr-mode-ui="enabled: false"
+      embedded
       arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
-      sourceWidth: 320;
-      sourceHeight: 240;
-      displayWidth: 320;
-      displayHeight: 240;
-    >
+      renderer="logarithmicDepthBuffer: true;">
+      
+      <a-nft
+        type="nft"
+        url="UnityWebARTest/Descriptors/test2"
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance="0.01"
+        smoothThreshold="5">
+        <a-light type="ambient" intensity="1"></a-light>
+        <a-box position="0 0 0" scale="100 100 100" color="red"></a-box>
+      </a-nft>
+
       <a-entity camera></a-entity>
     </a-scene>
-
-    <!-- Unity canvas & loader -->
-    <div id="unity-container">
-      <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"></div>
-      <div id="unity-footer">
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">UnityWebARProject</div>
-      </div>
-    </div>
-
-    <script>
-      function unityShowBanner(msg, type) {
-        const b = document.querySelector("#unity-warning"),
-              d = document.createElement("div");
-        d.innerHTML = msg;
-        d.style = type==="error"
-          ? "background:red;padding:10px;"
-          : type==="warning"
-          ? "background:yellow;padding:10px;" : "";
-        b.appendChild(d);
-        if(type==="warning") setTimeout(()=>b.removeChild(d),5000);
-      }
-
-      const canvas   = document.getElementById("unity-canvas");
-      const loaderUrl= "Build/docs.loader.js";
-      const config   = {
-        dataUrl:             "Build/docs.data",
-        frameworkUrl:        "Build/docs.framework.js",
-        codeUrl:             "Build/docs.wasm",
-        streamingAssetsUrl:  "StreamingAssets",
-        showBanner:          unityShowBanner,
-        webglContextAttributes:{ alpha:true, premultipliedAlpha:false }
-      };
-
-      console.log("Injecting Unity loader:", loaderUrl);
-      const unityLoader = document.createElement("script");
-      unityLoader.src = loaderUrl;
-      unityLoader.onload = () => {
-        if (!window.unityInstance) {
-          createUnityInstance(canvas, config, p => {
-            document.querySelector("#unity-progress-bar-full")
-                    .style.width = (100*p).toFixed(1) + "%";
-          })
-          .then(inst => {
-            window.unityInstance = inst;
-            document.querySelector("#unity-loading-bar").style.display = "none";
-          })
-          .catch(err => {
-            console.error("Unity load failed:", err);
-            unityShowBanner("Unity failed to load","error");
-          });
-        }
-      };
-      unityLoader.onerror = e => {
-        console.error("Error loading Unity loader script:", e);
-        unityShowBanner("Could not load Unity loader.js","error");
-      };
-      document.body.appendChild(unityLoader);
-    </script>
   </body>
 </html>
