@@ -56,26 +56,6 @@
       </div>
     </div>
 
-    <!-- Marker event handlers: register only after checking unityInstance -->
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const marker = document.querySelector('#marker');
-
-        marker.addEventListener('markerFound', () => {
-          if (!window.unityInstance) {
-            console.warn('Unity instance not ready yet');
-            return;
-          }
-          window.unityInstance.SendMessage('CubeSpawner', 'SpawnCube');
-        });
-
-        marker.addEventListener('markerLost', () => {
-          if (!window.unityInstance) return;
-          window.unityInstance.SendMessage('CubeSpawner', 'SetTracking', 0);
-        });
-      });
-    </script>
-
     <!-- Unity loader script -->
     <script>
       function unityShowBanner(msg, type) {
