@@ -57,52 +57,6 @@
       </div>
     </div>
 
-    <!-- Marker event handlers: spawn/destroy Cube via Unity -->
-    <script>
-      AFRAME.registerComponent("cube-follow", {
-        init() {
-          this.marker = this.el;
-          this.cam    = this.el.sceneEl.querySelector("[camera]");
-          this.spawned = false;
-
-          this.el.addEventListener("markerFound", () => {
-            if (!this.spawned && window.unityInstance) {
-              window.unityInstance.SendMessage("CubeSpawner","SpawnCube");
-              this.spawned = true;
-            }
-          });
-          this.el.addEventListener("markerLost", () => {
-            if (this.spawned && window.unityInstance) {
-              window.unityInstance.SendMessage("CubeSpawner","SetTracking",0);
-              this.spawned = false;
-            }
-          });
-        },
-
-        tick() {
-          if (!this.spawned || !this.marker.object3D.visible || !window.unityInstance) return;
-
-          const markerMat = this.marker.object3D.matrixWorld;
-          const camMat    = this.cam.object3D.matrixWorld;
-          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
-
-          const pos  = new THREE.Vector3().setFromMatrixPosition(relMat);
-          const quat = new THREE.Quaternion().setFromRotationMatrix(relMat);
-
-          // AR.js gives millimetres by default; convert to metres:
-          const mPos = { x: pos.x/1000, y: pos.y/1000, z: -pos.z/1000 };
-          const mRot = { x:-quat.x,  y:-quat.y,  z: quat.z,  w: quat.w };
-
-          console.log("JS → Unity UpdateTransformData", JSON.stringify({ position: mPos, rotation: mRot }));
-          window.unityInstance.SendMessage(
-            "CubeSpawner",
-            "UpdateTransformData",
-            JSON.stringify({ position: mPos, rotation: mRot })
-          );
-        }
-      });
-    </script>
-
     <!-- Unity loader script -->
     <script>
       function unityShowBanner(msg, type) {
@@ -147,6 +101,52 @@
       };
       loader.onerror = (e) => unityShowBanner('Could not load Unity loader.js', 'error');
       document.body.appendChild(loader);
+    </script>
+    
+    <!-- Marker event handlers: spawn/destroy Cube via Unity -->
+    <script>
+      AFRAME.registerComponent("cube-follow", {
+        init() {
+          this.marker = this.el;
+          this.cam    = this.el.sceneEl.querySelector("[camera]");
+          this.spawned = false;
+
+          this.el.addEventListener("markerFound", () => {
+            if (!this.spawned && window.unityInstance) {
+              window.unityInstance.SendMessage("CubeSpawner","SpawnCube");
+              this.spawned = true;
+            }
+          });
+          this.el.addEventListener("markerLost", () => {
+            if (this.spawned && window.unityInstance) {
+              window.unityInstance.SendMessage("CubeSpawner","SetTracking",0);
+              this.spawned = false;
+            }
+          });
+        },
+
+        tick() {
+          if (!this.spawned || !this.marker.object3D.visible || !window.unityInstance) return;
+
+          const markerMat = this.marker.object3D.matrixWorld;
+          const camMat    = this.cam.object3D.matrixWorld;
+          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
+
+          const pos  = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const quat = new THREE.Quaternion().setFromRotationMatrix(relMat);
+
+          // AR.js gives millimetres by default; convert to metres:
+          const mPos = { x: pos.x/1000, y: pos.y/1000, z: -pos.z/1000 };
+          const mRot = { x:-quat.x,  y:-quat.y,  z: quat.z,  w: quat.w };
+
+          console.log("JS → Unity UpdateTransformData", JSON.stringify({ position: mPos, rotation: mRot }));
+          window.unityInstance.SendMessage(
+            "CubeSpawner",
+            "UpdateTransformData",
+            JSON.stringify({ position: mPos, rotation: mRot })
+          );
+        }
+      });
     </script>
   </body>
 </html>
