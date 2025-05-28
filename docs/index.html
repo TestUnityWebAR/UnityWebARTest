@@ -56,20 +56,22 @@
       </div>
     </div>
 
-    <!-- Marker event handlers to spawn/destroy cube in Unity -->
+    <!-- Marker event handlers: register only after checking unityInstance -->
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const marker = document.querySelector('#marker');
-        const unity = window.unityInstance;
 
         marker.addEventListener('markerFound', () => {
-          // Notify Unity to spawn the cube
-          unity.SendMessage('CubeSpawner', 'SpawnCube');
+          if (!window.unityInstance) {
+            console.warn('Unity instance not ready yet');
+            return;
+          }
+          window.unityInstance.SendMessage('CubeSpawner', 'SpawnCube');
         });
 
         marker.addEventListener('markerLost', () => {
-          // Notify Unity to destroy the cube
-          unity.SendMessage('CubeSpawner', 'SetTracking', 0);
+          if (!window.unityInstance) return;
+          window.unityInstance.SendMessage('CubeSpawner', 'SetTracking', 0);
         });
       });
     </script>
