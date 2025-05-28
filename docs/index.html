@@ -64,9 +64,9 @@
             unity.SendMessage("CubeSpawner","UpdateTransformData",
               JSON.stringify({
                 position: {
-                  x: (pos.x/1000),
-                  y: (pos.y/1000),
-                  z: -(pos.z/1000)
+                  x: (pos.x),
+                  y: (pos.y),
+                  z: -(pos.z)
                 },
                 rotation: {
                   x: -quat.x, 
@@ -97,12 +97,12 @@
         id="marker"
         type="nft"
         url="UnityWebARTest/StreamingAssets/Descriptors/test2"
+        size="0.045"
         smooth="true"
         smoothCount="20"
         smoothTolerance="0.05"
         smoothThreshold="7"
         detectMinSimilarity="0.6"
-        scale="3 3 3"                
         cube-follow>                <!-- attach your Unity bridge component -->
         
         <a-light type="ambient" intensity="1"></a-light>
