@@ -80,7 +80,7 @@
         },
 
         tick() {
-          if (!this.spawned || !this.marker.object3D.visible) return;
+          if (!this.spawned || !this.marker.object3D.visible || !window.unityInstance) return;
 
           const markerMat = this.marker.object3D.matrixWorld;
           const camMat    = this.cam.object3D.matrixWorld;
