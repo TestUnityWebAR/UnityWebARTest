@@ -12078,9 +12078,11 @@ var ASM_CONSTS = {
   function _glClear(mask) {
       // the COLOR buffer bit mask
       const COLOR_BUFFER_BIT = 0x4000;
-      // strip out the colour‐clear bit, but leave any others (depth, stencil…)
-      mask = mask & ~COLOR_BUFFER_BIT;
-      // now perform the clear for depth/stencil as Unity intended
+      // if we're asked to clear *only* color, bail out
+      if (mask === COLOR_BUFFER_BIT) {
+        return;
+      }
+      // otherwise do the normal clear
       GLctx.clear(mask);
     }
 
