@@ -34,6 +34,7 @@
         type="nft"
         url="UnityWebARTest/StreamingAssets/Descriptors/test2"
         size="0.045"
+        cube-follow
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
@@ -58,18 +59,46 @@
 
     <!-- Marker event handlers: spawn/destroy Cube via Unity -->
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const marker = document.querySelector('#marker');
-        marker.addEventListener('markerFound', () => {
-          if (window.unityInstance) {
-            window.unityInstance.SendMessage('CubeSpawner', 'SpawnCube');
-          }
-        });
-        marker.addEventListener('markerLost', () => {
-          if (window.unityInstance) {
-            window.unityInstance.SendMessage('CubeSpawner', 'SetTracking', 0);
-          }
-        });
+      AFRAME.registerComponent("cube-follow", {
+        init() {
+          this.marker = this.el;
+          this.cam    = this.el.sceneEl.querySelector("[camera]");
+          this.spawned = false;
+
+          this.el.addEventListener("markerFound", () => {
+            if (!this.spawned && window.unityInstance) {
+              window.unityInstance.SendMessage("CubeSpawner","SpawnCube");
+              this.spawned = true;
+            }
+          });
+          this.el.addEventListener("markerLost", () => {
+            if (this.spawned && window.unityInstance) {
+              window.unityInstance.SendMessage("CubeSpawner","SetTracking",0);
+              this.spawned = false;
+            }
+          });
+        },
+
+        tick() {
+          if (!this.spawned || !this.marker.object3D.visible) return;
+
+          const markerMat = this.marker.object3D.matrixWorld;
+          const camMat    = this.cam.object3D.matrixWorld;
+          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
+
+          const pos  = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const quat = new THREE.Quaternion().setFromRotationMatrix(relMat);
+
+          // AR.js gives millimetres by default; convert to metres:
+          const mPos = { x: pos.x/1000, y: pos.y/1000, z: -pos.z/1000 };
+          const mRot = { x:-quat.x,  y:-quat.y,  z: quat.z,  w: quat.w };
+
+          window.unityInstance.SendMessage(
+            "CubeSpawner",
+            "UpdateTransformData",
+            JSON.stringify({ position: mPos, rotation: mRot })
+          );
+        }
       });
     </script>
 
