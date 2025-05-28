@@ -56,6 +56,23 @@
       </div>
     </div>
 
+    <!-- Marker event handlers: spawn/destroy Cube via Unity -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const marker = document.querySelector('#marker');
+        marker.addEventListener('markerFound', () => {
+          if (window.unityInstance) {
+            window.unityInstance.SendMessage('CubeSpawner', 'SpawnCube');
+          }
+        });
+        marker.addEventListener('markerLost', () => {
+          if (window.unityInstance) {
+            window.unityInstance.SendMessage('CubeSpawner', 'SetTracking', 0);
+          }
+        });
+      });
+    </script>
+
     <!-- Unity loader script -->
     <script>
       function unityShowBanner(msg, type) {
