@@ -64,9 +64,9 @@
             unity.SendMessage("CubeSpawner","UpdateTransformData",
               JSON.stringify({
                 position: {
-                  x: (pos.x),
-                  y: (pos.y),
-                  z: -(pos.z)
+                  x: pos.x / 1000,
+                  y: pos.y / 1000,
+                  z: -pos.z / 1000
                 },
                 rotation: {
                   x: -quat.x, 
