@@ -93,6 +93,7 @@
           const mPos = { x: pos.x/1000, y: pos.y/1000, z: -pos.z/1000 };
           const mRot = { x:-quat.x,  y:-quat.y,  z: quat.z,  w: quat.w };
 
+          console.log("JS → Unity UpdateTransformData", JSON.stringify({ position: mPos, rotation: mRot }));
           window.unityInstance.SendMessage(
             "CubeSpawner",
             "UpdateTransformData",
