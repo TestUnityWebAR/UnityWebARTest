@@ -32,6 +32,7 @@
             console.log('[JS] markerFound');
             if (!this.spawned && window.unityInstance) {
               unityInstance.SendMessage('CubeSpawner', 'SpawnCube');
+              console.log("[JS] SpawnCube HAS BEEN CALLED");
               this.spawned = true;
             }
           });
