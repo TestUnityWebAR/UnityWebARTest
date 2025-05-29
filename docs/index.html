@@ -29,6 +29,7 @@
           this.cam     = this.el.sceneEl.querySelector('[camera]');
 
           this.marker.addEventListener('markerFound', () => {
+            console.log('[JS] markerFound');
             if (!this.spawned && window.unityInstance) {
               unityInstance.SendMessage('CubeSpawner', 'SpawnCube');
               this.spawned = true;
@@ -36,6 +37,7 @@
           });
 
           this.marker.addEventListener('markerLost', () => {
+            console.log('[JS] markerLost');
             if (this.spawned && window.unityInstance) {
               unityInstance.SendMessage('CubeSpawner', 'SetTracking', 0);
               this.spawned = false;
@@ -59,7 +61,7 @@
             position: { x: pos.x/1000, y: pos.y/1000, z: -pos.z/1000 },
             rotation: { x: -quat.x,   y: -quat.y,   z: quat.z,    w: quat.w }
           });
-
+          console.log('[JS→Unity] payloadObj:', payloadObj);
           unityInstance.SendMessage('CubeSpawner', 'UpdateTransformData', payload);
         }
       });
