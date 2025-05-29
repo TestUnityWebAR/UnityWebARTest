@@ -9,34 +9,16 @@
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        background: transparent;
-      }
-      /* AR.js scene fills the back */
-      #scene {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-      }
-      /* Unity canvas sits on top, stays transparent */
-      #unity-container,
-      #unity-canvas,
-      canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: transparent !important;
-        pointer-events: none;
+      html, body { margin:0; padding:0; overflow:hidden; background:transparent; }
+      #scene { position:absolute; top:0; left:0; width:100vw; height:100vh; }
+      #unity-container, #unity-canvas, canvas {
+        position:absolute; top:0; left:0;
+        width:100vw; height:100vh;
+        background:transparent !important;
+        pointer-events:none;
       }
     </style>
-
+    
     <script>
       AFRAME.registerComponent("cube-follow", {
         init() {
