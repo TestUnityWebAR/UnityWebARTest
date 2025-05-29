@@ -119,7 +119,7 @@ html
       <a-nft
         id="marker"
         type="nft"
-        url="UnityWebARTest/Descriptors/test2"
+        url="UnityWebARTest/StreamingAssets/Descriptors/test2"
         smooth="true"
         smoothCount="20"
         smoothTolerance="0.05"
@@ -167,11 +167,11 @@ html
       }
 
       const canvas = document.getElementById("unity-canvas");
-      const loaderUrl = "Build/UnityWebARTest.loader.js";
+      const loaderUrl = "Build/docs.loader.js";
       const config = {
-        dataUrl: "Build/UnityWebARTest.data",
-        frameworkUrl: "Build/UnityWebARTest.framework.js",
-        codeUrl: "Build/UnityWebARTest.wasm",
+        dataUrl: "Build/docs.data",
+        frameworkUrl: "Build/docs.framework.js",
+        codeUrl: "Build/docs.wasm",
         streamingAssetsUrl: "StreamingAssets",
         showBanner: unityShowBanner,
         webglContextAttributes: {
