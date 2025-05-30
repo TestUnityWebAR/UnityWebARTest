@@ -32,49 +32,66 @@
       AFRAME.registerComponent("cube-follow", {
         init() {
           this.spawned = false;
-          this.lost    = 0;
+          this.lostCount    = 0;
           this.marker  = this.el;
           this.cam     = this.el.sceneEl.querySelector("[camera]");
           this._accum  = 0;
           this._interval = 1000/30; // limit to 30Hz
 
           this.marker.addEventListener("markerFound", () => {
+            this.lostCount    = 0;
             window.unityInstance?.SendMessage("CubeSpawner","SpawnCube");
             this.spawned = true;
-            this.lost    = 0;
           });
           this.marker.addEventListener("markerLost", () => {
-            this.lost = 5; // force destroy next tick
+            //this.lostCount = 5; // force destroy next tick
           });
         },
 
         tick(time, dt) {
           if (!this.spawned) return;
-          if (++this.lost > 5) {
-            window.unityInstance?.SendMessage("CubeSpawner","SetTracking", 0);
-            this.spawned = false;
-            return;
-          }
-          if (!this.marker.object3D.visible) return;
+          const visible = this.marker.object3D.visible;
 
-          this._accum += dt;
-          if (this._accum < this._interval) return;
-          this._accum = 0;
+              if (!visible) {
+                // only destroy after 5 consecutive invisible‐frames
+                if (++this.lostCount > 5) {
+                  window.unityInstance?.SendMessage("CubeSpawner","SetTracking", 0);
+                  this.spawned   = false;
+                }
+                return;
+              }
 
-          // compute camera⁻¹ * marker world → relPose
-          const m = this.marker.object3D.matrixWorld;
-          const c = this.cam.object3D.matrixWorld;
-          const rel = new THREE.Matrix4().copy(c).invert().multiply(m);
-          const pos  = new THREE.Vector3().setFromMatrixPosition(rel);
-          const quat = new THREE.Quaternion().setFromRotationMatrix(rel);
+              // marker is visible, reset the lost counter
+              this.lostCount = 0;
 
-          // mm → m and flip Z
-          const payload = JSON.stringify({
-            position: { x: pos.x/1000, y: pos.y/1000, z: -pos.z/1000 },
-            rotation: { x: -quat.x,   y: -quat.y,   z: quat.z,    w: quat.w }
-          });
+              // throttle to ~30 Hz
+              this._accum += dt;
+              if (this._accum < this._interval) return;
+              this._accum = 0;
 
-          window.unityInstance.SendMessage("CubeSpawner","UpdateTransformData", payload);
+              // compute relative pose: camera⁻¹ * marker
+              const camMat    = this.cam.object3D.matrixWorld;
+              const markerMat = this.marker.object3D.matrixWorld;
+              const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
+              const pos       = new THREE.Vector3().setFromMatrixPosition(relMat);
+              const quat      = new THREE.Quaternion().setFromRotationMatrix(relMat);
+
+              // mm → m and flip Z
+              const payload = JSON.stringify({
+                position: {
+                  x: pos.x/1000,
+                  y: pos.y/1000,
+                  z: -pos.z/1000
+                },
+                rotation: {
+                  x: -quat.x,
+                  y: -quat.y,
+                  z: quat.z,
+                  w: quat.w
+                }
+              });
+
+          u.SendMessage("CubeSpawner","UpdateTransformData", payload);
         }
       });
     </script>
