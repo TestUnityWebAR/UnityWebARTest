@@ -9,11 +9,11 @@
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      /* full‐screen AR.js background */
+      /* full-screen AR.js background */
       html, body { margin:0; padding:0; overflow:hidden; background:transparent; }
       #scene { position:absolute; top:0; left:0; width:100vw; height:100vh; z-index:0; }
 
-      /* Unity’s transparent WebGL canvas on top */
+      /* Unity’s transparent WebGL canvas sits on top */
       #unity-container,
       #unity-canvas,
       canvas {
@@ -25,11 +25,12 @@
       }
     </style>
 
-    <!-- 2) cube-follow component: spawn once, debounce lost, send per-frame pose to Unity -->
+    <!-- 2) cube-follow component: spawn once, debounce lost, send per-frame pose → Unity -->
     <script>
       AFRAME.registerComponent('cube-follow', {
         schema: {
-          distanceFactor: { type: 'number', default: 20 }  // magnify the movement
+          // how much to amplify the raw metre offsets (tweak to taste)
+          distanceFactor: { type: 'number', default: 1.0 }
         },
 
         init() {
@@ -38,14 +39,14 @@
           this.marker    = this.el;
           this.cam       = this.el.sceneEl.querySelector('[camera]');
           this._accum    = 0;
-          this._interval = 1000 / 30;  // limit updates to 30 Hz
+          this._interval = 1000/30; // cap updates to 30Hz
 
           this.marker.addEventListener('markerFound', () => {
             this.lostCount = 0;
             const u = window.unityInstance;
             if (!u?.SendMessage) return;
-            u.SendMessage('CubeSpawner', 'SetTracking', 1);
-            u.SendMessage('CubeSpawner', 'SpawnCube');
+            u.SendMessage('CubeSpawner','SetTracking',1);
+            u.SendMessage('CubeSpawner','SpawnCube');
             this.spawned = true;
             console.log('[cube-follow] markerFound → SpawnCube');
           });
@@ -60,10 +61,10 @@
           const u = window.unityInstance;
           if (!u?.SendMessage || !this.spawned) return;
 
-          // debounce invisible frames
+          // if invisible for a few frames, destroy
           if (!this.marker.object3D.visible) {
             if (++this.lostCount > 5) {
-              u.SendMessage('CubeSpawner', 'SetTracking', 0);
+              u.SendMessage('CubeSpawner','SetTracking',0);
               this.spawned   = false;
               this.lostCount = 0;
               console.log('[cube-follow] lost confirmed → DestroyCube');
@@ -84,13 +85,13 @@
           const pos    = new THREE.Vector3().setFromMatrixPosition(relMat);
           const quat   = new THREE.Quaternion().setFromRotationMatrix(relMat);
 
-          // AR.js is in millimetres → Unity wants metres, then scale up by distanceFactor
+          // AR.js → metres, flip Z, apply distanceFactor
           const df = this.data.distanceFactor;
           const payload = JSON.stringify({
             position: {
-              x:  pos.x / 1000 * df,
-              y:  pos.y / 1000 * df,
-              z: -pos.z / 1000 * df
+              x: (pos.x / 1000) * df,
+              y: (pos.y / 1000) * df,
+              z: (-pos.z / 1000) * df
             },
             rotation: {
               x: -quat.x,
@@ -101,14 +102,14 @@
           });
 
           console.log('[cube-follow] JS→Unity payload:', payload);
-          u.SendMessage('CubeSpawner', 'UpdateTransformData', payload);
+          u.SendMessage('CubeSpawner','UpdateTransformData', payload);
         }
       });
     </script>
   </head>
 
   <body>
-    <!-- === 3) AR.js NFT Scene === -->
+    <!-- 3) AR.js NFT scene -->
     <a-scene
       id="scene"
       embedded
@@ -121,14 +122,14 @@
         type="nft"
         url="UnityWebARTest/StreamingAssets/Descriptors/test2"
         size="0.045"
-        cube-follow="distanceFactor: 20"
+        cube-follow="distanceFactor: 1"
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- === 4) Unity WebGL Overlay === -->
+    <!-- 4) Unity WebGL overlay -->
     <div id="unity-container">
       <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -144,7 +145,7 @@
       </div>
     </div>
 
-    <!-- === 5) Unity Loader + Logging === -->
+    <!-- 5) Unity loader + logging -->
     <script>
       function unityShowBanner(msg, type) {
         const b = document.querySelector('#unity-warning'),
@@ -178,7 +179,7 @@
         console.log('Unity loader loaded → createUnityInstance()');
         if (!window.unityInstance) {
           createUnityInstance(canvas, config, (p) => {
-            const pct = (100 * p).toFixed(1) + '%';
+            const pct = (100*p).toFixed(1) + '%';
             console.log('Unity loading:', pct);
             document.querySelector('#unity-progress-bar-full').style.width = pct;
           })
