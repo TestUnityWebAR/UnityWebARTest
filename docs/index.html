@@ -31,6 +31,7 @@
     <script>
       AFRAME.registerComponent("cube-follow", {
         init() {
+          const u = window.unityInstance;
           this.spawned = false;
           this.lostCount    = 0;
           this.marker  = this.el;
@@ -40,7 +41,7 @@
 
           this.marker.addEventListener("markerFound", () => {
             this.lostCount    = 0;
-            window.unityInstance?.SendMessage("CubeSpawner","SpawnCube");
+            u?.SendMessage("CubeSpawner","SpawnCube");
             this.spawned = true;
           });
           this.marker.addEventListener("markerLost", () => {
@@ -49,13 +50,14 @@
         },
 
         tick(time, dt) {
+          const u = window.unityInstance;
           if (!this.spawned) return;
           const visible = this.marker.object3D.visible;
 
               if (!visible) {
                 // only destroy after 5 consecutive invisible‐frames
                 if (++this.lostCount > 5) {
-                  window.unityInstance?.SendMessage("CubeSpawner","SetTracking", 0);
+                  u?.SendMessage("CubeSpawner","SetTracking", 0);
                   this.spawned   = false;
                 }
                 return;
