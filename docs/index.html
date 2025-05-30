@@ -27,53 +27,77 @@
       }
     </style>
 
-    <!-- 2) cube-follow component: spawn on markerFound, debounce markerLost, per-frame pose → Unity -->
+    <!-- 2) cube-follow component: spawn, debounce, 30 Hz pose updates → Unity -->
     <script>
     AFRAME.registerComponent('cube-follow', {
-      schema: {
-        distanceFactor: { type: 'number', default: 3 }
-      },
-
       init() {
-        this.spawned   = false;
-        this.lostCount = 0;
-        this.marker    = this.el;
-        this.cam       = this.el.sceneEl.querySelector('[camera]');
+        this.spawned    = false;
+        this.lostCount  = 0;
+        this.marker     = this.el;
+        this.cam        = this.el.sceneEl.querySelector('[camera]');
+        this._accum     = 0;
+        this._interval  = 1000 / 30; // 30 Hz
 
-        // ← Add these back:
         this.marker.addEventListener('markerFound', () => {
+          console.log('[cube-follow] markerFound');
           this.lostCount = 0;
           const u = window.unityInstance;
           if (!u?.SendMessage) return;
           u.SendMessage('CubeSpawner','SetTracking', 1);
           u.SendMessage('CubeSpawner','SpawnCube');
           this.spawned = true;
-          console.log('[cube-follow] markerFound → spawned');
         });
 
         this.marker.addEventListener('markerLost', () => {
-          // start debounce
-          console.log('[cube-follow] markerLost (will destroy after few ticks)');
+          console.log('[cube-follow] markerLost (start debounce)');
           this.lostCount = 0;
         });
       },
 
       tick(time, dt) {
-        const u = window.unityInstance;
-        if (!u?.SendMessage || !this.spawned) return;
+        if (!this.spawned) return;
 
+        // if marker invisible, debounce destruction
         if (!this.marker.object3D.visible) {
           if (++this.lostCount > 5) {
-            u.SendMessage('CubeSpawner','SetTracking', 0);
+            console.log('[cube-follow] lost confirmed → destroy');
+            window.unityInstance?.SendMessage('CubeSpawner','SetTracking', 0);
             this.spawned   = false;
             this.lostCount = 0;
-            console.log('[cube-follow] lost confirmed → destroyed');
           }
           return;
         }
         this.lostCount = 0;
 
-        // …then your existing relative‐pose + /1000 × distanceFactor logic…
+        // throttle to 30 Hz
+        this._accum += dt;
+        if (this._accum < this._interval) return;
+        this._accum = 0;
+
+        // compute relPose = camera⁻¹ * marker
+        const camMat    = this.cam.object3D.matrixWorld;
+        const markerMat = this.marker.object3D.matrixWorld;
+        const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
+        const pos       = new THREE.Vector3().setFromMatrixPosition(relMat);
+        const quat      = new THREE.Quaternion().setFromRotationMatrix(relMat);
+
+        // mm → m, flip Z
+        const payload = JSON.stringify({
+          position: {
+            x: pos.x / 1000,
+            y: pos.y / 1000,
+            z: -pos.z / 1000
+          },
+          rotation: {
+            x: -quat.x,
+            y: -quat.y,
+            z:  quat.z,
+            w:  quat.w
+          }
+        });
+
+        console.log('[cube-follow] sending →', payload);
+        window.unityInstance?.SendMessage('CubeSpawner','UpdateTransformData', payload);
       }
     });
     </script>
@@ -94,7 +118,7 @@
         type="nft"
         url="UnityWebARTest/StreamingAssets/Descriptors/test2"
         size="0.045"
-        cube-follow="distanceFactor: 5"
+        cube-follow
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
@@ -117,58 +141,58 @@
       </div>
     </div>
 
-    <!-- 5) Unity loader + logging -->
+    <!-- 5) Unity loader + logs -->
     <script>
       function unityShowBanner(msg, type) {
-        const b = document.querySelector("#unity-warning");
-        const d = document.createElement("div");
+        const b = document.querySelector('#unity-warning');
+        const d = document.createElement('div');
         d.innerHTML = msg;
-        d.style = type === "error"
-          ? "background:red;padding:10px;"
-          : type === "warning"
-          ? "background:yellow;padding:10px;"
-          : "";
+        d.style = type === 'error'
+          ? 'background:red;padding:10px;'
+          : type === 'warning'
+          ? 'background:yellow;padding:10px;'
+          : '';
         b.appendChild(d);
-        if (type === "warning") setTimeout(() => b.removeChild(d), 5000);
+        if (type === 'warning') setTimeout(() => b.removeChild(d), 5000);
       }
 
-      const canvas    = document.getElementById("unity-canvas");
-      const loaderUrl = "Build/docs.loader.js";
-      console.log("Injecting Unity loader:", loaderUrl);
+      const canvas    = document.getElementById('unity-canvas');
+      const loaderUrl = 'Build/docs.loader.js';
+      console.log('Injecting Unity loader:', loaderUrl);
 
       const config = {
-        dataUrl:               "Build/docs.data",
-        frameworkUrl:          "Build/docs.framework.js",
-        codeUrl:               "Build/docs.wasm",
-        streamingAssetsUrl:    "StreamingAssets",
+        dataUrl:               'Build/docs.data',
+        frameworkUrl:          'Build/docs.framework.js',
+        codeUrl:               'Build/docs.wasm',
+        streamingAssetsUrl:    'StreamingAssets',
         showBanner:            unityShowBanner,
         webglContextAttributes:{ alpha:true, premultipliedAlpha:false }
       };
 
-      const loader = document.createElement("script");
+      const loader = document.createElement('script');
       loader.src = loaderUrl;
       loader.onload = () => {
-        console.log("Unity loader loaded → createUnityInstance()");
+        console.log('Unity loader loaded → createUnityInstance()');
         if (!window.unityInstance) {
-          createUnityInstance(canvas, config, (progress) => {
-            const pct = (100 * progress).toFixed(1) + "%";
-            console.log("Unity loading:", pct);
-            document.querySelector("#unity-progress-bar-full").style.width = pct;
+          createUnityInstance(canvas, config, progress => {
+            const pct = (100 * progress).toFixed(1) + '%';
+            console.log('Unity loading:', pct);
+            document.querySelector('#unity-progress-bar-full').style.width = pct;
           })
-          .then((instance) => {
-            console.log("Unity instance created");
-            window.unityInstance = instance;
-            document.querySelector("#unity-loading-bar").style.display = "none";
+          .then(inst => {
+            console.log('Unity instance created');
+            window.unityInstance = inst;
+            document.querySelector('#unity-loading-bar').style.display = 'none';
           })
-          .catch((err) => {
-            console.error("Unity load failed:", err);
-            unityShowBanner("Unity failed to load", "error");
+          .catch(err => {
+            console.error('Unity load failed:', err);
+            unityShowBanner('Unity failed to load','error');
           });
         }
       };
-      loader.onerror = (e) => {
-        console.error("Error loading Unity loader script:", e);
-        unityShowBanner("Could not load Unity loader.js", "error");
+      loader.onerror = e => {
+        console.error('Error loading Unity loader script:', e);
+        unityShowBanner('Could not load Unity loader.js','error');
       };
       document.body.appendChild(loader);
     </script>
