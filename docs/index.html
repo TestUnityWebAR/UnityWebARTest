@@ -29,69 +29,50 @@
 
     <!-- 2) cube-follow component: spawn on markerFound, debounce markerLost, per-frame pose → Unity -->
     <script>
-      AFRAME.registerComponent("cube-follow", {
+      AFRAME.registerComponent('cube-follow', {
+        schema: {
+          distanceFactor: { type: 'number', default: 3 }  // ← tuning knob
+        },
+
         init() {
           this.spawned   = false;
           this.lostCount = 0;
-          this.marker    = this.el;                                         
-          this.cam       = this.el.sceneEl.querySelector("[camera]");
-          this._accum    = 0;
-          this._interval = 1000/30; // ~30 updates per second
-
-          this.marker.addEventListener("markerFound", () => {
-            this.lostCount = 0;
-            if (window.unityInstance?.SendMessage) {
-              unityInstance.SendMessage("CubeSpawner","SetTracking", 1);
-              unityInstance.SendMessage("CubeSpawner","SpawnCube");
-              this.spawned = true;
-            }
-          });
-
-          this.marker.addEventListener("markerLost", () => {
-            // start counting lost frames in tick()
-          });
+          this.marker    = this.el;
+          this.cam       = this.el.sceneEl.querySelector('[camera]');
         },
 
         tick(time, dt) {
-          if (!this.spawned || !window.unityInstance) return;
+          if (!this.spawned || !this.marker.object3D.visible || !window.unityInstance) return;
 
-          const visible = this.marker.object3D.visible;
-
-          if (!visible) {
-            // only destroy after 5 consecutive invisible frames
-            if (++this.lostCount > 5) {
-              unityInstance.SendMessage("CubeSpawner","SetTracking", 0);
-              this.spawned   = false;
-              this.lostCount = 0;
-            }
-            return;
-          }
-
-          // marker is visible again
-          this.lostCount = 0;
-
-          // throttle updates
-          this._accum += dt;
-          if (this._accum < this._interval) return;
-          this._accum = 0;
-
-          // compute relative pose: camera⁻¹ * marker
+          // compute relPose = camera⁻¹ * marker
           const camMat    = this.cam.object3D.matrixWorld;
           const markerMat = this.marker.object3D.matrixWorld;
           const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
           const pos       = new THREE.Vector3().setFromMatrixPosition(relMat);
           const quat      = new THREE.Quaternion().setFromRotationMatrix(relMat);
 
-          // AR.js is millimetres → Unity needs metres, flip Z
+          // mm → m, flip Z, then *distanceFactor
+          const df = this.data.distanceFactor;
+          const px = (pos.x / 1000) * df;
+          const py = (pos.y / 1000) * df;
+          const pz = (-pos.z / 1000) * df;
+
           const payload = JSON.stringify({
-            position: { x: pos.x/1000, y: pos.y/1000, z: -pos.z/1000 },
-            rotation: { x: -quat.x,   y: -quat.y,   z: quat.z,    w: quat.w }
+            position: { x: px, y: py, z: pz },
+            rotation: {
+              x: -quat.x,
+              y: -quat.y,
+              z:  quat.z,
+              w:  quat.w
+            }
           });
 
-          unityInstance.SendMessage("CubeSpawner","UpdateTransformData", payload);
+          console.log('[cube-follow] sending', payload);
+          window.unityInstance.SendMessage('CubeSpawner','UpdateTransformData', payload);
         }
       });
     </script>
+
   </head>
 
   <body>
@@ -107,8 +88,8 @@
         id="marker"
         type="nft"
         url="UnityWebARTest/StreamingAssets/Descriptors/test2"
-        smooth="true"
-        cube-follow
+        size="0.045"
+        cube-follow="distanceFactor: 5"
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
