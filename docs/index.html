@@ -2,84 +2,87 @@
 <html lang="en-us">
   <head>
     <meta charset="utf-8" />
-    <title>Unity WebAR Cube Spawner</title>
+    <title>Unity WebAR</title>
 
-    <!-- 1) A-Frame + AR.js NFT -->
+    <!-- 1) A-Frame core + AR.js NFT build -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      html, body { margin:0; padding:0; overflow:hidden; background:transparent }
-      #scene { position:absolute; top:0; left:0; width:100vw; height:100vh; z-index:0 }
-      #unity-container, #unity-canvas, canvas {
-        position:absolute; top:0; left:0;
-        width:100vw; height:100vh;
-        background:transparent!important;
-        pointer-events:none;
-        z-index:1;
+      /* full-screen AR.js behind, Unity canvas on top */
+      html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; }
+      #scene {
+        position: absolute; top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        z-index: 0;
+      }
+      #unity-container,
+      #unity-canvas,
+      canvas {
+        position: absolute; top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background: transparent !important;
+        pointer-events: none;
+        z-index: 1;
       }
     </style>
 
-    <!-- 2) cube-follow component: spawn once, debounce lost, send per-frame pose → Unity -->
+    <!-- 2) cube-follow component: spawn on markerFound, debounce markerLost, per-frame pose → Unity -->
     <script>
-      AFRAME.registerComponent('cube-follow', {
-        schema: { distanceFactor: { type: 'number', default: 3 } },
-
+      AFRAME.registerComponent("cube-follow", {
         init() {
-          this.spawned = false;
+          console.log("[cube-follow] init");
+          this.spawned   = false;
           this.lostCount = 0;
-          this.marker = this.el;
-          this.cam = this.el.sceneEl.querySelector('[camera]');
+          this.marker    = this.el;
+          this.cam       = this.el.sceneEl.querySelector("[camera]");
 
-          this.marker.addEventListener('markerFound', () => {
+          this.marker.addEventListener("markerFound", () => {
+            console.log("[cube-follow] markerFound");
             this.lostCount = 0;
             const u = window.unityInstance;
             if (!u?.SendMessage) return;
-            u.SendMessage('CubeSpawner','SetTracking', 1);
-            u.SendMessage('CubeSpawner','SpawnCube');
+            u.SendMessage("CubeSpawner","SetTracking", 1);
+            u.SendMessage("CubeSpawner","SpawnCube");
             this.spawned = true;
-            console.log('[cube-follow] markerFound → spawned');
           });
 
-          this.marker.addEventListener('markerLost', () => {
-            console.log('[cube-follow] markerLost (debounce start)');
-            this.lostCount = 0;
+          this.marker.addEventListener("markerLost", () => {
+            console.log("[cube-follow] markerLost (debouncing)");
+            // actual destroy in tick() after a few frames
           });
         },
 
-        tick(time, dt) {
+        tick() {
           const u = window.unityInstance;
           if (!u?.SendMessage || !this.spawned) return;
 
-          // debounce invisible
+          // debounce invisible frames
           if (!this.marker.object3D.visible) {
             if (++this.lostCount > 5) {
-              u.SendMessage('CubeSpawner','SetTracking', 0);
-              this.spawned = false;
+              console.log("[cube-follow] lost confirmed → destroy");
+              u.SendMessage("CubeSpawner","SetTracking", 0);
+              this.spawned   = false;
               this.lostCount = 0;
-              console.log('[cube-follow] lost confirmed → destroyed');
             }
             return;
           }
           this.lostCount = 0;
 
-          // ----- RELATIVE POSE CALC + SEND TO UNITY -----
-          const camMat    = this.cam.object3D.matrixWorld;
+          // compute camera⁻¹ * marker pose
           const markerMat = this.marker.object3D.matrixWorld;
-          const relMat    = new THREE.Matrix4()
-                              .copy(camMat).invert()
-                              .multiply(markerMat);
+          const camMat    = this.cam.object3D.matrixWorld;
+          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
+          const relPos    = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const relQuat   = new THREE.Quaternion().setFromRotationMatrix(relMat);
 
-          const relPos  = new THREE.Vector3().setFromMatrixPosition(relMat);
-          const relQuat = new THREE.Quaternion().setFromRotationMatrix(relMat);
-
-          // AR.js already in metres → just scale
-          const df = this.data.distanceFactor;
+          // AR.js units=mm; Unity expects m, plus tuning factor:
+          const DIST_FACTOR = 3.0;
           const payload = JSON.stringify({
             position: {
-              x:  relPos.x * df,
-              y:  relPos.y * df,
-              z: -relPos.z * df
+              x:  relPos.x/1000 * DIST_FACTOR,
+              y:  relPos.y/1000 * DIST_FACTOR,
+              z: -relPos.z/1000 * DIST_FACTOR
             },
             rotation: {
               x: -relQuat.x,
@@ -89,35 +92,39 @@
             }
           });
 
-          console.log('[cube-follow] JS→Unity payload', payload);
-          u.SendMessage('CubeSpawner','UpdateTransformData', payload);
+          console.log("[cube-follow] JS→Unity payload:", payload);
+          u.SendMessage("CubeSpawner","UpdateTransformData", payload);
         }
       });
     </script>
   </head>
 
   <body>
-    <!-- 3) AR.js Scene with your single NFT marker -->
+    <!-- 3) AR.js NFT scene -->
     <a-scene
       id="scene"
       embedded
-      vr-mode-ui="enabled:false"
-      renderer="logarithmicDepthBuffer:true; alpha:true"
-      arjs="trackingMethod:best; sourceType:webcam; debugUIEnabled:false;"
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true; alpha: true"
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
     >
       <a-nft
         id="marker"
         type="nft"
         url="UnityWebARTest/StreamingAssets/Descriptors/test2"
-        size="0.045"
-        cube-follow="distanceFactor:5"
+        smooth="true"
+        smoothCount="20"
+        smoothTolerance="0.05"
+        smoothThreshold="7"
+        detectMinSimilarity="0.6"
+        cube-follow
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- 4) Unity WebGL Canvas & Loader -->
+    <!-- 4) Unity WebGL overlay -->
     <div id="unity-container">
       <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -133,53 +140,58 @@
       </div>
     </div>
 
-    <!-- 5) Unity Loader Script -->
+    <!-- 5) Unity loader + logging -->
     <script>
-      function unityShowBanner(msg,type){
-        const b=document.querySelector('#unity-warning'),
-              d=document.createElement('div');
-        d.innerHTML=msg;
-        d.style=type==='error'
-          ?'background:red;padding:10px;'
-          :type==='warning'
-          ?'background:yellow;padding:10px;':'';
+      function unityShowBanner(msg, type) {
+        const b = document.querySelector("#unity-warning");
+        const d = document.createElement("div");
+        d.innerHTML = msg;
+        d.style = type === "error"
+          ? "background:red;padding:10px;"
+          : type === "warning"
+          ? "background:yellow;padding:10px;"
+          : "";
         b.appendChild(d);
-        if(type==='warning')setTimeout(()=>b.removeChild(d),5000);
+        if (type === "warning") setTimeout(() => b.removeChild(d), 5000);
       }
 
-      const canvas    = document.getElementById('unity-canvas'),
-            loaderUrl = 'Build/docs.loader.js',
-            config    = {
-              dataUrl:              'Build/docs.data',
-              frameworkUrl:         'Build/docs.framework.js',
-              codeUrl:              'Build/docs.wasm',
-              streamingAssetsUrl:   'StreamingAssets',
-              showBanner:           unityShowBanner,
-              webglContextAttributes:{ alpha:true,premultipliedAlpha:false }
-            };
+      const canvas    = document.getElementById("unity-canvas");
+      const loaderUrl = "Build/docs.loader.js";
+      console.log("Injecting Unity loader:", loaderUrl);
 
-      console.log('Loading Unity loader:', loaderUrl);
-      const loader = document.createElement('script');
+      const config = {
+        dataUrl:               "Build/docs.data",
+        frameworkUrl:          "Build/docs.framework.js",
+        codeUrl:               "Build/docs.wasm",
+        streamingAssetsUrl:    "StreamingAssets",
+        showBanner:            unityShowBanner,
+        webglContextAttributes:{ alpha:true, premultipliedAlpha:false }
+      };
+
+      const loader = document.createElement("script");
       loader.src = loaderUrl;
       loader.onload = () => {
-        console.log('Unity loader ready → createUnityInstance()');
-        createUnityInstance(canvas, config, (p) => {
-          document.querySelector('#unity-progress-bar-full')
-                  .style.width = (100*p).toFixed(1) + '%';
-        })
-        .then(inst => {
-          window.unityInstance = inst;
-          document.querySelector('#unity-loading-bar').style.display='none';
-          console.log('Unity instance created');
-        })
-        .catch(err => {
-          console.error('Unity load failed',err);
-          unityShowBanner('Unity failed to load','error');
-        });
+        console.log("Unity loader loaded → createUnityInstance()");
+        if (!window.unityInstance) {
+          createUnityInstance(canvas, config, (progress) => {
+            const pct = (100 * progress).toFixed(1) + "%";
+            console.log("Unity loading:", pct);
+            document.querySelector("#unity-progress-bar-full").style.width = pct;
+          })
+          .then((instance) => {
+            console.log("Unity instance created");
+            window.unityInstance = instance;
+            document.querySelector("#unity-loading-bar").style.display = "none";
+          })
+          .catch((err) => {
+            console.error("Unity load failed:", err);
+            unityShowBanner("Unity failed to load", "error");
+          });
+        }
       };
       loader.onerror = (e) => {
-        console.error('Could not load Unity loader',e);
-        unityShowBanner('Could not load Unity loader.js','error');
+        console.error("Error loading Unity loader script:", e);
+        unityShowBanner("Could not load Unity loader.js", "error");
       };
       document.body.appendChild(loader);
     </script>
