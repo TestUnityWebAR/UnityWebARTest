@@ -30,18 +30,16 @@
       AFRAME.registerComponent('cube-follow', {
         init() {
           this.spawned = false;
+          this.lost    = 0;
           this.marker  = this.el;
           this.cam     = this.el.sceneEl.querySelector('[camera]');
 
-          // on first sight, tell Unity to spawn + start tracking
           this.marker.addEventListener('markerFound', () => {
             if (this.spawned || !window.unityInstance?.SendMessage) return;
             window.unityInstance.SendMessage('CubeSpawner','SetTracking', 1);
             window.unityInstance.SendMessage('CubeSpawner','SpawnCube');
             this.spawned = true;
           });
-
-          // as soon as marker is lost, destroy cube
           this.marker.addEventListener('markerLost', () => {
             if (!this.spawned || !window.unityInstance?.SendMessage) return;
             window.unityInstance.SendMessage('CubeSpawner','SetTracking', 0);
@@ -50,16 +48,30 @@
         },
 
         tick() {
-          if (!this.spawned || !this.marker.object3D.visible || !window.unityInstance?.SendMessage) return;
+          if (!this.spawned ||
+              !this.marker.object3D.visible ||
+              !window.unityInstance?.SendMessage) return;
 
-          // grab A-Frame’s built-in world-space pose (in meters)
-          const p = this.marker.object3D.position;
-          const q = this.marker.object3D.quaternion;
+          // compute relPose = camera⁻¹ * marker
+          const camMat    = this.cam.object3D.matrixWorld;
+          const markerMat = this.marker.object3D.matrixWorld;
+          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
+          const relPos    = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const relQuat   = new THREE.Quaternion().setFromRotationMatrix(relMat);
 
-          // flip Z & invert X/Y to match Unity’s conventions
+          // **NO** division by 1000
           const payload = JSON.stringify({
-            position: { x: p.x,    y: p.y,    z: -p.z },
-            rotation: { x: -q.x,   y: -q.y,   z: q.z, w: q.w }
+            position: { 
+              x: relPos.x, 
+              y: relPos.y, 
+              z: -relPos.z 
+            },
+            rotation: {
+              x: -relQuat.x, 
+              y: -relQuat.y, 
+              z:  relQuat.z, 
+              w:  relQuat.w 
+            }
           });
 
           window.unityInstance.SendMessage(
@@ -85,8 +97,8 @@
         id="marker"
         type="nft"
         url="UnityWebARTest/StreamingAssets/Descriptors/test2"
-        size="0.2"             <!-- your physical marker size in meters -->
-        cube-follow           <!-- attach our component -->
+        size="0.2"           
+        cube-follow         
       >
         <a-light type="ambient" intensity="1"></a-light>
       </a-nft>
