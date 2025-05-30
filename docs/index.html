@@ -93,7 +93,7 @@
       <a-nft
         id="marker"
         type="nft"
-        url="StreamingAssets/Descriptors/yourMarker"
+        url="StreamingAssets/Descriptors/test2"
         size="0.045"
         cube-follow
       >
@@ -134,13 +134,13 @@
       }
 
       const canvas    = document.getElementById('unity-canvas');
-      const loaderUrl = 'Build/UnityWebAR.loader.js';
+      const loaderUrl = 'Build/docs.loader.js';
       console.log('Injecting Unity loader:', loaderUrl);
 
       const config = {
-        dataUrl:               'Build/UnityWebAR.data',
-        frameworkUrl:          'Build/UnityWebAR.framework.js',
-        codeUrl:               'Build/UnityWebAR.wasm',
+        dataUrl:               'Build/docs.data',
+        frameworkUrl:          'Build/docs.framework.js',
+        codeUrl:               'Build/docs.wasm',
         streamingAssetsUrl:    'StreamingAssets',
         showBanner:            unityShowBanner,
         webglContextAttributes:{ alpha:true, premultipliedAlpha:false }
