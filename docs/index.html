@@ -29,48 +29,53 @@
 
     <!-- 2) cube-follow component: spawn on markerFound, debounce markerLost, per-frame pose → Unity -->
     <script>
-      AFRAME.registerComponent('cube-follow', {
-        schema: {
-          distanceFactor: { type: 'number', default: 3 }  // ← tuning knob
-        },
+    AFRAME.registerComponent('cube-follow', {
+      schema: {
+        distanceFactor: { type: 'number', default: 3 }
+      },
 
-        init() {
-          this.spawned   = false;
+      init() {
+        this.spawned   = false;
+        this.lostCount = 0;
+        this.marker    = this.el;
+        this.cam       = this.el.sceneEl.querySelector('[camera]');
+
+        // ← Add these back:
+        this.marker.addEventListener('markerFound', () => {
           this.lostCount = 0;
-          this.marker    = this.el;
-          this.cam       = this.el.sceneEl.querySelector('[camera]');
-        },
+          const u = window.unityInstance;
+          if (!u?.SendMessage) return;
+          u.SendMessage('CubeSpawner','SetTracking', 1);
+          u.SendMessage('CubeSpawner','SpawnCube');
+          this.spawned = true;
+          console.log('[cube-follow] markerFound → spawned');
+        });
 
-        tick(time, dt) {
-          if (!this.spawned || !this.marker.object3D.visible || !window.unityInstance) return;
+        this.marker.addEventListener('markerLost', () => {
+          // start debounce
+          console.log('[cube-follow] markerLost (will destroy after few ticks)');
+          this.lostCount = 0;
+        });
+      },
 
-          // compute relPose = camera⁻¹ * marker
-          const camMat    = this.cam.object3D.matrixWorld;
-          const markerMat = this.marker.object3D.matrixWorld;
-          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
-          const pos       = new THREE.Vector3().setFromMatrixPosition(relMat);
-          const quat      = new THREE.Quaternion().setFromRotationMatrix(relMat);
+      tick(time, dt) {
+        const u = window.unityInstance;
+        if (!u?.SendMessage || !this.spawned) return;
 
-          // mm → m, flip Z, then *distanceFactor
-          const df = this.data.distanceFactor;
-          const px = (pos.x / 1000) * df;
-          const py = (pos.y / 1000) * df;
-          const pz = (-pos.z / 1000) * df;
-
-          const payload = JSON.stringify({
-            position: { x: px, y: py, z: pz },
-            rotation: {
-              x: -quat.x,
-              y: -quat.y,
-              z:  quat.z,
-              w:  quat.w
-            }
-          });
-
-          console.log('[cube-follow] sending', payload);
-          window.unityInstance.SendMessage('CubeSpawner','UpdateTransformData', payload);
+        if (!this.marker.object3D.visible) {
+          if (++this.lostCount > 5) {
+            u.SendMessage('CubeSpawner','SetTracking', 0);
+            this.spawned   = false;
+            this.lostCount = 0;
+            console.log('[cube-follow] lost confirmed → destroyed');
+          }
+          return;
         }
-      });
+        this.lostCount = 0;
+
+        // …then your existing relative‐pose + /1000 × distanceFactor logic…
+      }
+    });
     </script>
 
   </head>
