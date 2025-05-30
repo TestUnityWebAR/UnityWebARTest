@@ -31,69 +31,64 @@
     <script>
       AFRAME.registerComponent("cube-follow", {
         init() {
-          const u = window.unityInstance;
-          this.spawned = false;
-          this.lostCount    = 0;
-          this.marker  = this.el;
-          this.cam     = this.el.sceneEl.querySelector("[camera]");
-          this._accum  = 0;
-          this._interval = 1000/30; // limit to 30Hz
+          this.spawned   = false;
+          this.lostCount = 0;
+          this.marker    = this.el;                                         
+          this.cam       = this.el.sceneEl.querySelector("[camera]");
+          this._accum    = 0;
+          this._interval = 1000/30; // ~30 updates per second
 
           this.marker.addEventListener("markerFound", () => {
-            this.lostCount    = 0;
-            u?.SendMessage("CubeSpawner","SpawnCube");
-            this.spawned = true;
+            this.lostCount = 0;
+            if (window.unityInstance?.SendMessage) {
+              unityInstance.SendMessage("CubeSpawner","SetTracking", 1);
+              unityInstance.SendMessage("CubeSpawner","SpawnCube");
+              this.spawned = true;
+            }
           });
+
           this.marker.addEventListener("markerLost", () => {
-            //this.lostCount = 5; // force destroy next tick
+            // start counting lost frames in tick()
           });
         },
 
         tick(time, dt) {
-          const u = window.unityInstance;
-          if (!this.spawned) return;
+          if (!this.spawned || !window.unityInstance) return;
+
           const visible = this.marker.object3D.visible;
 
-              if (!visible) {
-                // only destroy after 5 consecutive invisible‐frames
-                if (++this.lostCount > 5) {
-                  u?.SendMessage("CubeSpawner","SetTracking", 0);
-                  this.spawned   = false;
-                }
-                return;
-              }
-
-              // marker is visible, reset the lost counter
+          if (!visible) {
+            // only destroy after 5 consecutive invisible frames
+            if (++this.lostCount > 5) {
+              unityInstance.SendMessage("CubeSpawner","SetTracking", 0);
+              this.spawned   = false;
               this.lostCount = 0;
+            }
+            return;
+          }
 
-              // throttle to ~30 Hz
-              this._accum += dt;
-              if (this._accum < this._interval) return;
-              this._accum = 0;
+          // marker is visible again
+          this.lostCount = 0;
 
-              // compute relative pose: camera⁻¹ * marker
-              const camMat    = this.cam.object3D.matrixWorld;
-              const markerMat = this.marker.object3D.matrixWorld;
-              const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
-              const pos       = new THREE.Vector3().setFromMatrixPosition(relMat);
-              const quat      = new THREE.Quaternion().setFromRotationMatrix(relMat);
+          // throttle updates
+          this._accum += dt;
+          if (this._accum < this._interval) return;
+          this._accum = 0;
 
-              // mm → m and flip Z
-              const payload = JSON.stringify({
-                position: {
-                  x: pos.x/1000,
-                  y: pos.y/1000,
-                  z: -pos.z/1000
-                },
-                rotation: {
-                  x: -quat.x,
-                  y: -quat.y,
-                  z: quat.z,
-                  w: quat.w
-                }
-              });
+          // compute relative pose: camera⁻¹ * marker
+          const camMat    = this.cam.object3D.matrixWorld;
+          const markerMat = this.marker.object3D.matrixWorld;
+          const relMat    = new THREE.Matrix4().copy(camMat).invert().multiply(markerMat);
+          const pos       = new THREE.Vector3().setFromMatrixPosition(relMat);
+          const quat      = new THREE.Quaternion().setFromRotationMatrix(relMat);
 
-          u.SendMessage("CubeSpawner","UpdateTransformData", payload);
+          // AR.js is millimetres → Unity needs metres, flip Z
+          const payload = JSON.stringify({
+            position: { x: pos.x/1000, y: pos.y/1000, z: -pos.z/1000 },
+            rotation: { x: -quat.x,   y: -quat.y,   z: quat.z,    w: quat.w }
+          });
+
+          unityInstance.SendMessage("CubeSpawner","UpdateTransformData", payload);
         }
       });
     </script>
